@@ -6,7 +6,6 @@ from sklearn.cluster import KMeans
 from base64 import b64decode
 import numpy as np
 import pandas
-import matplotlib.pyplot as plt
 import urllib2
 import json
 import StringIO
@@ -94,85 +93,6 @@ def plot_diagonal_quartiles(x_values, means, tools, better):
     tools_quartiles = get_quartile_points(scores_and_values, first_quartile, second_quartile, third_quartile)
 
     return (tools_quartiles)
-
-
-# function that prints a table with the list of tools and the corresponding quartiles
-def print_full_table(quartiles_table):
-    row_names = sorted(quartiles_table[next(iter(quartiles_table))].keys())
-
-    # build matrix with all results
-    quartiles_list = []
-
-    for name in sorted(quartiles_table.iterkeys()):
-
-        quartiles = []
-
-        for row in row_names:
-            quartiles.append(quartiles_table[name][row])
-
-        quartiles_list.append(quartiles)
-
-    text = []
-    for tool in row_names:
-        text.append([tool])
-
-    for num, name in enumerate(row_names):
-        for i in range(len(quartiles_table.keys())):
-            text[num].append(quartiles_list[i][num])
-
-    # get total score for all methods
-
-    quartiles_sums = {}
-
-    for num, val in enumerate(text):
-        total = sum(text[num][i] for i in range(1, len(text[num]), 1))
-
-        quartiles_sums[text[num][0]] = total
-
-    # sort tools by that score to rank them
-
-    sorted_quartiles_sums = sorted(quartiles_sums.items(), key=lambda x: x[1])
-
-    # append to the final table
-
-    for i, val in enumerate(sorted_quartiles_sums):
-        for j, lst in enumerate(text):
-            if val[0] == text[j][0]:
-                text[j].append("# " + str(i + 1))
-
-    df = pandas.DataFrame(text)
-    vals = df.values
-
-    # green color scale
-    colors = df.applymap(lambda x: '#238b45' if x == 1 else '#ffffff')
-    colors = colors.values
-
-    ## build matplotlib image
-    fig, ax = plt.subplots()
-    # hide axes
-    fig.patch.set_visible(False)
-    ax.axis('off')
-    ax.axis('tight')
-
-    fig.tight_layout()
-    method_names = sorted(quartiles_table.iterkeys())
-
-    method_names = ["TOOL / CHALLENGE -->"] + method_names
-    method_names.append("# RANKING #")
-
-    the_table = ax.table(cellText=vals,
-                         colLabels=method_names,
-                         cellLoc='center',
-                         loc='center',
-                         # bbox=[1.1, 0.15, 0.5, 0.8])
-                         colWidths=[0.16, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06],
-                         cellColours=colors,
-                         colColours=['#ffffff'] * len(df.columns))
-    fig.tight_layout()
-    the_table.auto_set_font_size(False)
-    the_table.set_fontsize(12)
-    the_table.scale(1, 1.5)
-    plt.subplots_adjust(right=0.95, left=0.04, top=0.9, bottom=0.1)
 
 
 # function that clusters participants using the k-means algorithm
@@ -270,15 +190,6 @@ def build_table(bench_id, classificator_id):
 
             quartiles_table[challenge] = tools_quartiles
 
-        print_full_table(quartiles_table)
-
-        fig = plt.gcf()
-        fig.set_size_inches(20, 11.1)
-        imgdata = StringIO.StringIO()
-        fig.savefig(imgdata, format='svg')
-        imgdata.seek(0)  # rewind the data
-
-        plt.close("all")
 
         return quartiles_table
 
