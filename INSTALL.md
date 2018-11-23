@@ -6,7 +6,6 @@ The source code of this API is written using the [Flask framework](http://flask.
 	- `pip` is available in many Linux distributions (Ubuntu package `python-pip`, CentOS EPEL package `python-pip`), and also as [pip](https://pip.pypa.io/en/stable/) Python package.
     ```bash
     sudo apt-get install python-pip python-dev build-essential
-    sudo pip install virtualenv virtualenvwrapper
     ```
 	- `venv` for Python 2 can be installed with:
     ```bash
