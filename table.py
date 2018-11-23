@@ -205,7 +205,9 @@ bp = Blueprint('table', __name__)
 
 @bp.route('/')
 def index_page():
-    return "FLASK BENCHMARKING EVENT API\n USAGE:\n http://localhost:8080/'<bench_event_id>'/'<desired_classification>'"
+    return "<b>FLASK BENCHMARKING EVENT API</b><br><br>\
+            USAGE:<br><br> \
+            http://localhost:8080/bench_event_id/desired_classification"
 
 @bp.route('/<string:bench_id>')
 @bp.route('/<string:bench_id>/<string:classificator_id>')
