@@ -145,53 +145,59 @@ def cluster_tools(my_array, tools, better):
 ###########################################################################################################
 ###########################################################################################################
 
-def build_table(bench_id, classificator_id):
+def build_table(data, classificator_id):
+    challenges = set()
+
+    for dataset in data:
+        challenge_id = dataset['_id'].split('_')[1]
+        challenges.add(challenge_id)
+
+    # this dictionary will store all the information required for the quartiles table
+    quartiles_table = {}
+
+    for challenge in challenges:
+        x_values = []
+        y_values = []
+        tools = set()
+        better = 'top-right'
+        for dataset in data:
+            tools.add(dataset['depends_on']['tool_id'].split(":")[1])
+            challenge_id = dataset['_id'].split('_')[1]
+            if challenge == challenge_id:
+                data_uri = dataset['datalink']['uri']
+                encoded = data_uri.split(",")[1]
+                metric = float(b64decode(encoded))
+                if dataset['depends_on']['metrics_id'] == "TCGA:TPR":
+                    x_values.append(metric)
+                elif dataset['depends_on']['metrics_id'] == "TCGA:PPV":
+                    y_values.append(metric)
+
+        # get quartiles depending on selected classification method
+
+        if classificator_id == "squares":
+            tools_quartiles = plot_square_quartiles(x_values, y_values, sorted(list(tools)), better)
+
+        elif classificator_id == "clusters":
+            tools_quartiles = cluster_tools(zip(x_values, y_values), tools, better)
+
+        else:
+            tools_quartiles = plot_diagonal_quartiles(x_values, y_values, sorted(list(tools)), better)
+
+        quartiles_table[challenge] = tools_quartiles
+    
+    return quartiles_table
+
+def get_data(bench_id, classificator_id):
     try:
         response = urllib2.urlopen(
             'https://dev-openebench.bsc.es/api/scientific/Dataset/?query=' + bench_id + '+assessment&fmt=json')
         data = json.loads(response.read())['Dataset']
 
-        challenges = set()
-
-        for dataset in data:
-            challenge_id = dataset['_id'].split('_')[1]
-            challenges.add(challenge_id)
-
-        # this dictionary will store all the information required for the quartiles table
-        quartiles_table = {}
-
-        for challenge in challenges:
-            x_values = []
-            y_values = []
-            tools = set()
-            better = 'top-right'
-            for dataset in data:
-                tools.add(dataset['depends_on']['tool_id'].split(":")[1])
-                challenge_id = dataset['_id'].split('_')[1]
-                if challenge == challenge_id:
-                    data_uri = dataset['datalink']['uri']
-                    encoded = data_uri.split(",")[1]
-                    metric = float(b64decode(encoded))
-                    if dataset['depends_on']['metrics_id'] == "TCGA:TPR":
-                        x_values.append(metric)
-                    elif dataset['depends_on']['metrics_id'] == "TCGA:PPV":
-                        y_values.append(metric)
-
-            # get quartiles depending on selected classification method
-
-            if classificator_id == "squares":
-                tools_quartiles = plot_square_quartiles(x_values, y_values, sorted(list(tools)), better)
-
-            elif classificator_id == "clusters":
-                tools_quartiles = cluster_tools(zip(x_values, y_values), tools, better)
-
-            else:
-                tools_quartiles = plot_diagonal_quartiles(x_values, y_values, sorted(list(tools)), better)
-
-            quartiles_table[challenge] = tools_quartiles
-
-
-        return quartiles_table
+        if data == None:
+            return { 'data': None}
+        else:
+            result = build_table(data, classificator_id)
+            return result
 
     except urllib2.URLError as e:
 
@@ -201,18 +207,18 @@ def build_table(bench_id, classificator_id):
 # create blueprint and define url
 bp = Blueprint('table', __name__)
 
-# build_table('TCGA:2018-04-05', 'diagonals')
+
 
 @bp.route('/')
 def index_page():
     return "<b>FLASK BENCHMARKING EVENT API</b><br><br>\
             USAGE:<br><br> \
-            http://localhost:8080/bench_event_id/desired_classification"
+            http://webpage:8080/bench_event_id/desired_classification"
 
 @bp.route('/<string:bench_id>')
 @bp.route('/<string:bench_id>/<string:classificator_id>')
 def compute_classification(bench_id, classificator_id="diagonals"):
-    out = build_table(bench_id, classificator_id)
+    out = get_data(bench_id, classificator_id)
     response = jsonify(out)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
@@ -220,8 +226,3 @@ def compute_classification(bench_id, classificator_id="diagonals"):
     # return send_file(out, mimetype='svg')
     # return render_template('index.html', data=out)
 
-# @app.route('your route', methods=['GET'])
-# def yourMethod(params):
-#    response = flask.jsonify({'some': 'data'})
-#    response.headers.add('Access-Control-Allow-Origin', '*')
-#    return response
