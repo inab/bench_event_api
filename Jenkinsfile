@@ -6,8 +6,8 @@ pipeline {
             stage('Install modules') {
                 steps {
                     // Install Modules
-                   echo "hola"
+                    sh 'python app.py'
                 }
             }     
-        }
+    
 }
