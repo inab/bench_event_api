@@ -6,7 +6,7 @@ pipeline {
             stage('Install modules') {
                 steps {
                     // Install Modules
-                   
+                   echo "hola"
                 }
             }     
         }
