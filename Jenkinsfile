@@ -6,14 +6,14 @@ pipeline {
             stage('activate virtual environment') {
                 steps {
                     // Install Modules
-                    sh 'source .pyenv/bin/activate'
+                    bash 'source .pyenv/bin/activate'
                 }
             }
 
             stage('Build') {
                 steps {
                     // Create dist folder
-                    sh 'python app.py'
+                    bash 'python app.py'
                 }
             }     
         }
