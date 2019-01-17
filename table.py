@@ -153,6 +153,7 @@ def build_table(data, classificator_id, challenge_list):
     for dataset in data:
         challenge_id = dataset['_id'].split('_')[1]
         if challenge_list == []:
+            
             challenges.add(challenge_id)
         else:
             if challenge_id in challenge_list:
@@ -225,9 +226,7 @@ def index_page():
 @bp.route('/<string:bench_id>/<string:classificator_id>', methods = ['POST', 'GET'])
 def compute_classification(bench_id, classificator_id="diagonals"):
     if request.method == 'POST':
-        print "hola"
-        challenge_list = request.form['challenge_list']
-        print challenge_list
+        challenge_list = request.get_data()
         out = get_data(bench_id, classificator_id, challenge_list)
         response = jsonify(out)
         response.headers.add('Access-Control-Allow-Origin', '*')
