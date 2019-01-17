@@ -1,6 +1,6 @@
 from __future__ import division
 from flask import (
-    Blueprint, jsonify
+    Blueprint, jsonify, request
 )
 from sklearn.cluster import KMeans
 from base64 import b64decode
@@ -145,12 +145,18 @@ def cluster_tools(my_array, tools, better):
 ###########################################################################################################
 ###########################################################################################################
 
-def build_table(data, classificator_id):
+
+def build_table(data, classificator_id, challenge_list):
+
     challenges = set()
 
     for dataset in data:
         challenge_id = dataset['_id'].split('_')[1]
-        challenges.add(challenge_id)
+        if challenge_list == []:
+            challenges.add(challenge_id)
+        else:
+            if challenge_id in challenge_list:
+                challenges.add(challenge_id)
 
     # this dictionary will store all the information required for the quartiles table
     quartiles_table = {}
@@ -187,7 +193,7 @@ def build_table(data, classificator_id):
     
     return quartiles_table
 
-def get_data(bench_id, classificator_id):
+def get_data(bench_id, classificator_id, challenge_list):
     try:
         response = urllib2.urlopen(
             'https://dev-openebench.bsc.es/api/scientific/Dataset/?query=' + bench_id + '+assessment&fmt=json')
@@ -196,7 +202,7 @@ def get_data(bench_id, classificator_id):
         if data == None:
             return { 'data': None}
         else:
-            result = build_table(data, classificator_id)
+            result = build_table(data, classificator_id, challenge_list)
             return result
 
     except urllib2.URLError as e:
@@ -216,13 +222,23 @@ def index_page():
             http://webpage:8080/bench_event_id/desired_classification"
 
 @bp.route('/<string:bench_id>')
-@bp.route('/<string:bench_id>/<string:classificator_id>')
+@bp.route('/<string:bench_id>/<string:classificator_id>', methods = ['POST', 'GET'])
 def compute_classification(bench_id, classificator_id="diagonals"):
-    out = get_data(bench_id, classificator_id)
-    response = jsonify(out)
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return response
-    # return send_from_directory("/home/jgarrayo/public_html/flask_table/", "table.svg", as_attachment=False)
-    # return send_file(out, mimetype='svg')
-    # return render_template('index.html', data=out)
+    if request.method == 'POST':
+        print "hola"
+        challenge_list = request.form['challenge_list']
+        print challenge_list
+        out = get_data(bench_id, classificator_id, challenge_list)
+        response = jsonify(out)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+
+    else:
+        out = get_data(bench_id, classificator_id, [])
+        response = jsonify(out)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+        # return send_from_directory("/home/jgarrayo/public_html/flask_table/", "table.svg", as_attachment=False)
+        # return send_file(out, mimetype='svg')
+        # return render_template('index.html', data=out)
 
