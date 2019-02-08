@@ -194,10 +194,10 @@ def build_table(data, classificator_id, challenge_list):
     
     return quartiles_table
 
-def get_data(bench_id, classificator_id, challenge_list):
+def get_data(base_url, bench_id, classificator_id, challenge_list):
     try:
         response = urllib2.urlopen(
-            'https://dev-openebench.bsc.es/api/scientific/Dataset/?query=' + bench_id + '+assessment&fmt=json')
+            base_url + 'api/scientific/Dataset/?query=' + bench_id + '+assessment&fmt=json')
         data = json.loads(response.read())['Dataset']
 
         if data == None:
@@ -225,15 +225,22 @@ def index_page():
 @bp.route('/<string:bench_id>')
 @bp.route('/<string:bench_id>/<string:classificator_id>', methods = ['POST', 'GET'])
 def compute_classification(bench_id, classificator_id="diagonals"):
+	
+    mode = "production"
+    if mode == "production":
+	base_url = "https://openebench.bsc.es/"
+    else:
+	base_url = "https://dev-openebench.bsc.es/"
+
     if request.method == 'POST':
         challenge_list = request.get_data()
-        out = get_data(bench_id, classificator_id, challenge_list)
+        out = get_data(base_url, bench_id, classificator_id, challenge_list)
         response = jsonify(out)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
 
     else:
-        out = get_data(bench_id, classificator_id, [])
+        out = get_data(base_url, bench_id, classificator_id, [])
         response = jsonify(out)
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
