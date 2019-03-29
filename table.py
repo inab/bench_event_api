@@ -178,7 +178,6 @@ def cluster_tools(tools_dict, better):
 
 def build_table(data, classificator_id, challenge_list):
 
-    from collections import OrderedDict
     # this dictionary will store all the information required for the quartiles table
     quartiles_table = {}
 
