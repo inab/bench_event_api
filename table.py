@@ -6,11 +6,9 @@ from sklearn.cluster import KMeans
 from base64 import b64decode
 import numpy as np
 import pandas
-import urllib2
 import json
 import StringIO
 import requests
-
 
 # funtion that gets quartiles for x and y values
 def plot_square_quartiles(tools_dict, better, percentile=50):
@@ -252,9 +250,9 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
             result = build_table(data, classificator_id, challenge_list)
             return result
 
-    except urllib2.URLError as e:
+    except Exception as e:
 
-        print e.reason
+        print e
 
 
 # create blueprint and define url
