@@ -239,7 +239,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                                 }\
                             }' }
 
-        r = requests.post(url=url, json=json )
+        r = requests.post(url=url, json=json, verify=False )
         response = r.json()
         data = response["data"]["getBenchmarkingEvents"][0]["challenges"]
         
