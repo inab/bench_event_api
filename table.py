@@ -180,39 +180,43 @@ def build_table(data, classificator_id, challenge_list):
     quartiles_table = {}
 
     for challenge in data:
+        
         challenge_id = challenge['orig_id']
-        x_values = []
-        y_values = []
-        tools = {}
-        better = 'top-right'
-        # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
-        for dataset in challenge['datasets']:
-            if dataset['type'] == "assessment":
-                #get tool which this dataset belongs to
-                tool_id = dataset['depends_on']['tool_id']
-                if tool_id not in tools:
-                    tools[tool_id] = [0]*2
-                # get value of the two metrics
-                data_uri = dataset['datalink']['uri']
-                encoded = data_uri[1]
-                metric = float(b64decode(encoded))
-                if dataset['depends_on']['metrics_id'] == "OEBM0020000002":
-                    tools[tool_id][0] = metric
-                elif dataset['depends_on']['metrics_id'] == "OEBM0020000001":
-                    tools[tool_id][1] = metric
+        challenge_OEB_id = challenge['_id']
+        if challenge_list == [] or challenge_OEB_id in challenge_list:
 
-        # get quartiles depending on selected classification method
+            x_values = []
+            y_values = []
+            tools = {}
+            better = 'top-right'
+            # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
+            for dataset in challenge['datasets']:
+                if dataset['type'] == "assessment":
+                    #get tool which this dataset belongs to
+                    tool_id = dataset['depends_on']['tool_id']
+                    if tool_id not in tools:
+                        tools[tool_id] = [0]*2
+                    # get value of the two metrics
+                    data_uri = dataset['datalink']['uri']
+                    encoded = data_uri[1]
+                    metric = float(b64decode(encoded))
+                    if dataset['depends_on']['metrics_id'] == "OEBM0020000002":
+                        tools[tool_id][0] = metric
+                    elif dataset['depends_on']['metrics_id'] == "OEBM0020000001":
+                        tools[tool_id][1] = metric
 
-        if classificator_id == "squares":
-            tools_quartiles = plot_square_quartiles(tools, better)
+            # get quartiles depending on selected classification method
 
-        elif classificator_id == "clusters":
-            tools_quartiles = cluster_tools(tools, better)
+            if classificator_id == "squares":
+                tools_quartiles = plot_square_quartiles(tools, better)
 
-        else:
-            tools_quartiles = plot_diagonal_quartiles( tools, better)
+            elif classificator_id == "clusters":
+                tools_quartiles = cluster_tools(tools, better)
 
-        quartiles_table[challenge_id] = tools_quartiles
+            else:
+                tools_quartiles = plot_diagonal_quartiles( tools, better)
+
+            quartiles_table[challenge_id] = tools_quartiles
     
     return quartiles_table
 
@@ -223,6 +227,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                                 getBenchmarkingEvents(benchmarkingEventFilters:{id:"'+ bench_id + '"}) {\
                                     _id\
                                     challenges{\
+                                    _id\
                                     orig_id\
                                     datasets {\
                                         _id\
