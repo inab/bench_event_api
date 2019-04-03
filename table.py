@@ -248,29 +248,33 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
 
         r = requests.post(url=url, json=json, verify=False )
         response = r.json()
-        data = response["data"]["getBenchmarkingEvents"][0]["challenges"]
-        
-        # get tools for provided benchmarking event
-        community_id = "OEBC" + bench_id[4:-7]
-        json2 = { 'query' : '{\
-                                getTools(toolFilters:{community_id:"'+ community_id + '"}) {\
-                                    _id\
-                                    name\
-                                }\
-                            }' }
 
-        r = requests.post(url=url, json=json2, verify=False )
-        response = r.json()
-        tool_list = response["data"]["getTools"]
-        # iterate over the list of tools to generate a dictionary
-        tool_names = {}
-        for tool in tool_list:
-            tool_names[tool["_id"]] = tool["name"]
-
-        if data == None:
+        if response["data"]["getBenchmarkingEvents"] == []:
+            
             return { 'data': None}
+
         else:
+            data = response["data"]["getBenchmarkingEvents"][0]["challenges"]
+            # get tools for provided benchmarking event
+            community_id = "OEBC" + bench_id[4:-7]
+            json2 = { 'query' : '{\
+                                    getTools(toolFilters:{community_id:"'+ community_id + '"}) {\
+                                        _id\
+                                        name\
+                                    }\
+                                }' }
+
+            r = requests.post(url=url, json=json2, verify=False )
+            response2 = r.json()
+            tool_list = response2["data"]["getTools"]
+            # iterate over the list of tools to generate a dictionary
+            tool_names = {}
+            for tool in tool_list:
+                tool_names[tool["_id"]] = tool["name"]
+
+            # compute the classification
             result = build_table(data, classificator_id, tool_names, challenge_list)
+
             return result
 
     except Exception as e:
