@@ -174,7 +174,7 @@ def cluster_tools(tools_dict, better):
 ###########################################################################################################
 
 
-def build_table(data, classificator_id, challenge_list):
+def build_table(data, classificator_id, tool_names, challenge_list):
 
     # this dictionary will store all the information required for the quartiles table
     quartiles_table = {}
@@ -194,16 +194,17 @@ def build_table(data, classificator_id, challenge_list):
                 if dataset['type'] == "assessment":
                     #get tool which this dataset belongs to
                     tool_id = dataset['depends_on']['tool_id']
-                    if tool_id not in tools:
-                        tools[tool_id] = [0]*2
+                    tool_name = tool_names[tool_id]
+                    if tool_name not in tools:
+                        tools[tool_name] = [0]*2
                     # get value of the two metrics
                     data_uri = dataset['datalink']['uri']
                     encoded = data_uri[1]
                     metric = float(b64decode(encoded))
                     if dataset['depends_on']['metrics_id'] == "OEBM0020000002":
-                        tools[tool_id][0] = metric
+                        tools[tool_name][0] = metric
                     elif dataset['depends_on']['metrics_id'] == "OEBM0020000001":
-                        tools[tool_id][1] = metric
+                        tools[tool_name][1] = metric
 
             # get quartiles depending on selected classification method
 
@@ -223,6 +224,7 @@ def build_table(data, classificator_id, challenge_list):
 def get_data(base_url, bench_id, classificator_id, challenge_list):
     try:
         url = base_url + "sciapi/graphql"
+        # get datasets for provided benchmarking event
         json = { 'query' : '{\
                                 getBenchmarkingEvents(benchmarkingEventFilters:{id:"'+ bench_id + '"}) {\
                                     _id\
@@ -248,11 +250,27 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
         response = r.json()
         data = response["data"]["getBenchmarkingEvents"][0]["challenges"]
         
+        # get tools for provided benchmarking event
+        community_id = "OEBC" + bench_id[4:-7]
+        json2 = { 'query' : '{\
+                                getTools(toolFilters:{community_id:"'+ community_id + '"}) {\
+                                    _id\
+                                    name\
+                                }\
+                            }' }
+
+        r = requests.post(url=url, json=json2, verify=False )
+        response = r.json()
+        tool_list = response["data"]["getTools"]
+        # iterate over the list of tools to generate a dictionary
+        tool_names = {}
+        for tool in tool_list:
+            tool_names[tool["_id"]] = tool["name"]
 
         if data == None:
             return { 'data': None}
         else:
-            result = build_table(data, classificator_id, challenge_list)
+            result = build_table(data, classificator_id, tool_names, challenge_list)
             return result
 
     except Exception as e:
