@@ -185,8 +185,6 @@ def build_table(data, classificator_id, tool_names, challenge_list):
         challenge_OEB_id = challenge['_id']
         if challenge_list == [] or challenge_OEB_id in challenge_list:
 
-            x_values = []
-            y_values = []
             tools = {}
             better = 'top-right'
             # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
@@ -228,6 +226,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
         json = { 'query' : '{\
                                 getBenchmarkingEvents(benchmarkingEventFilters:{id:"'+ bench_id + '"}) {\
                                     _id\
+                                    community_id\
                                     challenges{\
                                     _id\
                                     orig_id\
@@ -256,7 +255,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
         else:
             data = response["data"]["getBenchmarkingEvents"][0]["challenges"]
             # get tools for provided benchmarking event
-            community_id = "OEBC" + bench_id[4:-7]
+            community_id = response["data"]["getBenchmarkingEvents"][0]["community_id"]
             json2 = { 'query' : '{\
                                     getTools(toolFilters:{community_id:"'+ community_id + '"}) {\
                                         _id\
