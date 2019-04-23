@@ -197,7 +197,7 @@ def build_table(data, classificator_id, tool_names, challenge_list):
                         tools[tool_name] = [0]*2
                     # get value of the two metrics
                     data_uri = dataset['datalink']['uri']
-                    encoded = data_uri[1]
+                    encoded = data_uri.split(",")[1]
                     metric = float(b64decode(encoded))
                     if dataset['depends_on']['metrics_id'] == "OEBM0020000002":
                         tools[tool_name][0] = metric
