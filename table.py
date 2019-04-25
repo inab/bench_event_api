@@ -177,14 +177,15 @@ def cluster_tools(tools_dict, better):
 def build_table(data, classificator_id, tool_names, challenge_list):
 
     # this dictionary will store all the information required for the quartiles table
-    quartiles_table = {}
+    quartiles_table = []
 
     for challenge in data:
         
-        challenge_id = challenge['orig_id']
+        challenge_id = challenge['acronym']
         challenge_OEB_id = challenge['_id']
         if challenge_list == [] or challenge_OEB_id in challenge_list:
 
+            challenge_object = {}
             tools = {}
             better = 'top-right'
             # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
@@ -215,7 +216,10 @@ def build_table(data, classificator_id, tool_names, challenge_list):
             else:
                 tools_quartiles = plot_diagonal_quartiles( tools, better)
 
-            quartiles_table[challenge_id] = tools_quartiles
+            challenge_object["_id"] = challenge_OEB_id
+            challenge_object["acronym"] = challenge_id
+            challenge_object["participants"] = tools_quartiles
+            quartiles_table.append(challenge_object)
     
     return quartiles_table
 
@@ -229,7 +233,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                                     community_id\
                                     challenges{\
                                     _id\
-                                    orig_id\
+                                    acronym\
                                     datasets {\
                                         _id\
                                         datalink{\
