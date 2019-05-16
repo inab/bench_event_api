@@ -228,7 +228,8 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                                 getBenchmarkingEvents(benchmarkingEventFilters:{id:"'+ bench_id + '"}) {\
                                     _id\
                                     community_id\
-                                    challenges{\
+                                }\
+                                getChallenges(challengeFilters: {benchmarking_event_id: "'+ bench_id + '"}) {\
                                     _id\
                                     acronym\
                                     datasets {\
@@ -242,19 +243,17 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                                         }\
                                         type\
                                     }\
-                                    }\
                                 }\
                             }' }
 
         r = requests.post(url=url, json=json, verify=False )
         response = r.json()
-
         if response["data"]["getBenchmarkingEvents"] == []:
             
             return { 'data': None}
 
         else:
-            data = response["data"]["getBenchmarkingEvents"][0]["challenges"]
+            data = response["data"]["getChallenges"]
             # get tools for provided benchmarking event
             community_id = response["data"]["getBenchmarkingEvents"][0]["community_id"]
             json2 = { 'query' : '{\
