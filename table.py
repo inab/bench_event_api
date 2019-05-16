@@ -3,7 +3,6 @@ from flask import (
     Blueprint, jsonify, request
 )
 from sklearn.cluster import KMeans
-from base64 import b64decode
 import numpy as np
 import pandas
 import json
@@ -197,12 +196,10 @@ def build_table(data, classificator_id, tool_names, challenge_list):
                     if tool_name not in tools:
                         tools[tool_name] = [0]*2
                     # get value of the two metrics
-                    data_uri = dataset['datalink']['uri']
-                    encoded = data_uri.split(",")[1]
-                    metric = float(b64decode(encoded))
-                    if dataset['depends_on']['metrics_id'] == "OEBM0020000002":
+                    metric = dataset['datalink']['inline_data']['value']
+                    if dataset['depends_on']['metrics_id'] == "OEBM0010000002":
                         tools[tool_name][0] = metric
-                    elif dataset['depends_on']['metrics_id'] == "OEBM0020000001":
+                    elif dataset['depends_on']['metrics_id'] == "OEBM0010000001":
                         tools[tool_name][1] = metric
 
             # get quartiles depending on selected classification method
@@ -237,7 +234,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                                     datasets {\
                                         _id\
                                         datalink{\
-                                            uri\
+                                            inline_data\
                                         }\
                                         depends_on{\
                                             tool_id\
