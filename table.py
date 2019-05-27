@@ -182,6 +182,9 @@ def build_table(data, classificator_id, tool_names, challenge_list):
         
         challenge_id = challenge['acronym']
         challenge_OEB_id = challenge['_id']
+        challenge_X_metric = challenge['metrics_categories'][0]['metrics'][0]['metrics_id']
+        challenge_Y_metric = challenge['metrics_categories'][0]['metrics'][1]['metrics_id']
+
         if challenge_list == [] or challenge_OEB_id in challenge_list:
 
             challenge_object = {}
@@ -196,10 +199,10 @@ def build_table(data, classificator_id, tool_names, challenge_list):
                     if tool_name not in tools:
                         tools[tool_name] = [0]*2
                     # get value of the two metrics
-                    metric = dataset['datalink']['inline_data']['value']
-                    if dataset['depends_on']['metrics_id'] == "OEBM0010000002":
+                    metric = float(dataset['datalink']['inline_data']['value'])
+                    if dataset['depends_on']['metrics_id'] == challenge_X_metric:
                         tools[tool_name][0] = metric
-                    elif dataset['depends_on']['metrics_id'] == "OEBM0010000001":
+                    elif dataset['depends_on']['metrics_id'] == challenge_Y_metric:
                         tools[tool_name][1] = metric
 
             # get quartiles depending on selected classification method
@@ -232,6 +235,11 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                                 getChallenges(challengeFilters: {benchmarking_event_id: "'+ bench_id + '"}) {\
                                     _id\
                                     acronym\
+                                    metrics_categories{\
+                                        metrics {\
+                                            metrics_id\
+                                        }\
+                                    }\
                                     datasets {\
                                         _id\
                                         datalink{\
