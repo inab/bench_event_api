@@ -1,3 +1,4 @@
+#! /usr/bin/python3.6
 from __future__ import division
 from flask import (
     Blueprint, jsonify, request
@@ -7,6 +8,7 @@ import numpy as np
 import pandas
 import json
 import requests
+
 
 # funtion that gets quartiles for x and y values
 def plot_square_quartiles(tools_dict, better, percentile=50):
@@ -325,3 +327,5 @@ def compute_classification(bench_id, classificator_id="diagonals"):
         # return send_file(out, mimetype='svg')
         # return render_template('index.html', data=out)
 
+# if __name__ == "__main__":
+#     app.run()
