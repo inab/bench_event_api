@@ -6,7 +6,6 @@ from sklearn.cluster import KMeans
 import numpy as np
 import pandas
 import json
-import StringIO
 import requests
 
 # funtion that gets quartiles for x and y values
@@ -16,7 +15,7 @@ def plot_square_quartiles(tools_dict, better, percentile=50):
     x_values = []
     means = []
     tools = []
-    for key, metrics in tools_dict.iteritems():
+    for key, metrics in tools_dict.items():
         tools.append(key)
         x_values.append(metrics[0])
         means.append(metrics[1])
@@ -81,7 +80,7 @@ def plot_diagonal_quartiles( tools_dict, better):
     x_values = []
     means = []
     tools = []
-    for key, metrics in tools_dict.iteritems():
+    for key, metrics in tools_dict.items():
         tools.append(key)
         x_values.append(metrics[0])
         means.append(metrics[1])
@@ -118,7 +117,7 @@ def cluster_tools(tools_dict, better):
     x_values = []
     means = []
     tools = []
-    for key, metrics in tools_dict.iteritems():
+    for key, metrics in tools_dict.items():
         tools.append(key)
         x_values.append(metrics[0])
         means.append(metrics[1])
@@ -257,7 +256,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
         r = requests.post(url=url, json=json, verify=False )
         response = r.json()
         if response["data"]["getBenchmarkingEvents"] == []:
-            
+
             return { 'data': None}
 
         else:
@@ -286,7 +285,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
 
     except Exception as e:
 
-        print e
+        print (e)
 
 
 # create blueprint and define url
@@ -306,10 +305,10 @@ def compute_classification(bench_id, classificator_id="diagonals"):
 	
     mode = "dev"
     if mode == "production":
-	base_url = "https://openebench.bsc.es/"
+	    base_url = "https://openebench.bsc.es/"
     else:
-	base_url = "https://dev-openebench.bsc.es/"
-
+	    base_url = "https://dev-openebench.bsc.es/"
+    
     if request.method == 'POST':
         challenge_list = request.get_data()
         out = get_data(base_url, bench_id, classificator_id, challenge_list)
