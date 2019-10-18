@@ -39,14 +39,18 @@ sudo service apache2 restart
 
 		ErrorLog ${APACHE_LOG_DIR}/error.log
         CustomLog ${APACHE_LOG_DIR}/access.log combined
-		WSGIDaemonProcess flask_app python-home=/home/<USERNAME>/public_html/bench_event_api/.pyenv
 
-     	WSGIScriptAlias /testflaskapp /home/<USERNAME>/public_html/bench_event_api/flask_app.wsgi
-     	<Directory /home/<USERNAME>/public_html/bench_event_api/>
-            Options FollowSymLinks
-            AllowOverride None
-            Require all granted
-     	</Directory>
+		WSGIDaemonProcess flask_app python-home=/path/to/bench_event_api/.pyenv
+		WSGIProcessGroup flask_app
+		WSGIApplicationGroup %{GLOBAL}
+		
+		Alias /rest/bench_event_api   /path/to/bench_event_api/flask_app.wsgi/
+		<Location /rest/bench_event_api>
+			Require all granted
+			SetHandler wsgi-script
+			Options +ExecCGI
+		</Location>
+
      	ErrorLog ${APACHE_LOG_DIR}/error.log
      	LogLevel warn
      	CustomLog ${APACHE_LOG_DIR}/access.log combined
