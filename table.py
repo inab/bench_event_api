@@ -186,7 +186,7 @@ def build_table(data, classificator_id, tool_names, challenge_list):
         challenge_X_metric = challenge['metrics_categories'][0]['metrics'][0]['metrics_id']
         challenge_Y_metric = challenge['metrics_categories'][0]['metrics'][1]['metrics_id']
 
-        if challenge_list == [] or challenge_OEB_id in challenge_list:
+        if challenge_list == [] or str.encode(challenge_OEB_id) in challenge_list:
 
             challenge_object = {}
             tools = {}
