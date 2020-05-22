@@ -1,0 +1,7 @@
+version: 3
+
+services:
+  processing:
+    image: "flask_bench_api:test"
+    container_name: "processing"
+    hostname: "processing"

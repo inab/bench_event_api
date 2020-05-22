@@ -1,0 +1,25 @@
+# .sqa/config.yml - jenkins-pipeline-library configuration file
+
+# generic configuration: workspace, agents
+config:
+  project_repos:
+    my_api:
+      repo: 'https://github.com/inab/bench_event_api.git'
+      branch: jenkins
+      #dockerhub: worsica/worsica-processing
+      #dockertag: $branch
+
+sqa-criteria:
+  qc-style:
+    repos:
+      my_api:
+        container: processing
+        tox:
+          testenv: stylecheck
+
+environment:
+  GIT_COMMITTER_NAME: javi-gv94
+  GIT_COMMITTER_EMAIL: javier.garrayo@hotmail.com
+  LANG: C.UTF-8
+
+timeout: 600
