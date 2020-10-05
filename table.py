@@ -124,8 +124,7 @@ def cluster_tools(tools_dict, better):
         x_values.append(metrics[0])
         means.append(metrics[1])
 
-
-    X = np.array(zip(x_values, means))
+    X = np.array(list(zip(x_values, means)))
     kmeans = KMeans(n_clusters=4, n_init=50, random_state=0).fit(X)
 
     cluster_no = kmeans.labels_
@@ -165,7 +164,7 @@ def cluster_tools(tools_dict, better):
 
     tools_clusters = {}
     for (x, y), num, name in zip(X, cluster_no, tools):
-        tools_clusters[name] = num + 1
+        tools_clusters[name] = int(num + 1)
 
     return tools_clusters
 

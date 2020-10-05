@@ -19,7 +19,7 @@ The source code of this API is written using the [Flask framework](http://flask.
 ```bash
 virtualenv -p python3 .pyenv
 source .pyenv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt -c constraints.txt
 ```
 
 ## API integration into Apache
