@@ -5,3 +5,7 @@ services:
     image: "flask_bench_api:test"
     container_name: "processing"
     hostname: "processing"
+    volumes:
+     - type: bind
+       source: ./bench_event_api
+       target: /bench_event_api-testing

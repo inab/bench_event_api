@@ -3,19 +3,38 @@
 # generic configuration: workspace, agents
 config:
   project_repos:
-    my_api:
+    bench_api:
       repo: 'https://github.com/inab/bench_event_api.git'
       branch: jenkins
       #dockerhub: worsica/worsica-processing
       #dockertag: $branch
 
 sqa-criteria:
-  qc-style:
+  qc_style:
     repos:
-      my_api:
+      bench_api:
         container: processing
         tox:
-          testenv: stylecheck
+          tox_file: /bench_event_api/tox.ini
+          testenv:
+            - pep8
+  qc_security:
+    repos:
+      bench_api:
+        container: processing
+        tox:
+          tox_file: /bench_event_api/tox.ini
+          testenv:
+            - bandit
+  qc_coverage:
+    repos:
+      bench_api:
+        container: processing
+        tox:
+          tox_file: /bench_event_api/tox.ini
+          testenv: 
+            - cover
+            - cobertura
 
 environment:
   GIT_COMMITTER_NAME: javi-gv94
