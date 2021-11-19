@@ -11,7 +11,7 @@ The source code of this API is written using the [Flask framework](http://flask.
         	- `venv` for Python 3 can be installed with:
 
     ```bash
-    sudo pip3 install virtualenv
+    sudo apt-get install python3-venv
     ```
 
 -   The creation of a virtual environment and installation of the dependencies in that environment is done running:
@@ -43,7 +43,7 @@ sudo service apache2 restart
 		
 		# Added to ensure Apache forwards authentication headers to Flask
 		WSGIPassAuthorization On
-		WSGIDaemonProcess flask_app python-home=/path/to/bench_event_api/.pyenv
+		WSGIDaemonProcess flask_app python-path=/path/to/bench_event_api python-home=/path/to/bench_event_api/.pyenv
 		WSGIProcessGroup flask_app
 		WSGIApplicationGroup %{GLOBAL}
 		
