@@ -275,7 +275,7 @@ import urllib.request
 #
 #http.client.HTTPConnection.debuglevel = 1
 
-def get_data(base_url, bench_id, classificator_id, challenge_list):
+def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
     #logging.getLogger().setLevel(logging.DEBUG)
     #requests_log = logging.getLogger("requests.packages.urllib3")
     #requests_log.setLevel(logging.DEBUG)
@@ -309,9 +309,13 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
         #    print(r1)
         #    response = json.loads(r1)
         
-        r = requests.post(url=url, json=query1, verify=True, headers={
+        common_headers = {
                 'Content-Type': 'application/json'
-            } )
+        }
+        if auth_header is not None:
+            common_headers['Authorization'] = auth_header
+        
+        r = requests.post(url=url, json=query1, verify=True, headers=common_headers)
         response = r.json()
         if len(response["data"]["getBenchmarkingEvents"]) == 0:
             logger.error(f"{bench_id} not found")
@@ -329,7 +333,7 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
                 }
             }
 
-            r = requests.post(url=url, json=json2, verify=True )
+            r = requests.post(url=url, json=json2, verify=True, headers=common_headers)
             response2 = r.json()
             tool_list = response2["data"]["getTools"]
             if len(tool_list) == 0:

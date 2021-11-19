@@ -37,7 +37,9 @@ def compute_classification(bench_id, classificator_id="diagonals"):
     else:
         challenge_list = []
     
-    out = table.get_data(OEB_base_url, bench_id, classificator_id, challenge_list)
+    auth_header = request.headers.get('Authorization')
+    
+    out = table.get_data(OEB_base_url, auth_header, bench_id, classificator_id, challenge_list)
     if out is None:
         abort(404)
         
