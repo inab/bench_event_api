@@ -2,9 +2,10 @@
 
 from __future__ import division
 
-from flask import Blueprint, jsonify, request, abort
+from flask import Blueprint, jsonify, request, abort, current_app
 import json
 import logging
+import urllib.parse
 
 from . import table
 
@@ -14,11 +15,8 @@ from . import table
 logger = logging.getLogger(__name__)
 
 #OEB_base_url = "https://dev-openebench.bsc.es/api/scientific"
-OEB_base_url = "https://dev-openebench.bsc.es/sciapi"
-
-def setOEBScientificServer(new_base_url):
-    OEB_base_url = new_base_url
-    logger.error(f'OEB Scientific root {OEB_base_url}')
+DEFAULT_oeb_server = 'dev-openebench.bsc.es'
+DEFAULT_oeb_sci_path = '/sciapi'
 
 # create blueprint and define url
 bp = Blueprint('table', __name__)
@@ -39,7 +37,28 @@ def compute_classification(bench_id, classificator_id="diagonals"):
     
     auth_header = request.headers.get('Authorization')
     
-    out = table.get_data(OEB_base_url, auth_header, bench_id, classificator_id, challenge_list)
+    oeb_sci = current_app.config.get("oeb_scientific", {})
+    parsed = urllib.parse.urlparse(request.base_url)
+    if parsed.netloc.startswith('localhost'):
+        oeb_server = oeb_sci.get('default_server', DEFAULT_oeb_server)
+        oeb_scheme = 'https'
+    else:
+        oeb_server = parsed.netloc
+        oeb_scheme = parsed.scheme
+    oeb_path = oeb_sci.get('path', DEFAULT_oeb_sci_path)
+    
+    oeb_base_url = urllib.parse.urlunparse(
+        urllib.parse.ParseResult(
+            scheme=oeb_scheme,
+            netloc=oeb_server,
+            path=oeb_path,
+            params='',
+            query='',
+            fragment=''
+        )
+    )
+    
+    out = table.get_data(oeb_base_url, auth_header, bench_id, classificator_id, challenge_list)
     if out is None:
         abort(404)
         

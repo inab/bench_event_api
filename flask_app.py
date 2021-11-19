@@ -7,13 +7,17 @@ import sys
 from flask import Flask
 from flask_cors import CORS
 
-from libs.routes import bp , setOEBScientificServer
+from libs.routes import bp
 
 # Creating the object holding the state of the API
 if hasattr(sys, 'frozen'):
         basis = sys.executable
 else:
         basis = sys.argv[0]
+
+# It is being called by mod_wsgi
+if basis == 'mod_wsgi':
+    basis = __file__
 
 import logging
 def initLogging():
@@ -23,17 +27,15 @@ if __name__ == '__main__':
     initLogging()
 
 api_root = os.path.split(basis)[0]
-config_file = basis + '.ini'
-if os.path.exists(config_file):
-    import configparser
-    cfg = configparser.ConfigParser()
-    cfg.read(config_file)
-    oeb_scientific_endpoint = cfg.get('config', 'oeb_scientific_endpoint', fallback=None)
-    logging.debug(oeb_scientific_endpoint)
-    if oeb_scientific_endpoint is not None:
-        setOEBScientificServer(oeb_scientific_endpoint)
 
 app = Flask(__name__)
+
+config_file = basis + '.json'
+if os.path.exists(config_file):
+    import json
+    with open(config_file, mode="r", encoding="utf-8") as cF:
+        app.config.update(json.load(cF))
+
 CORS(app)
 
 app.register_blueprint(bp)

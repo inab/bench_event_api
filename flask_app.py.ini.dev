@@ -1,3 +1,0 @@
-[config]
-#oeb_scientific_endpoint: https://dev-openebench.bsc.es/api/scientific
-oeb_scientific_endpoint: https://dev-openebench.bsc.es/sciapi

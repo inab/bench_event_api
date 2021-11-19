@@ -23,6 +23,11 @@ pip install --upgrade pip wheel
 pip install -r requirements.txt -c constraints.txt
 ```
 
+## API deployment
+As the API can be used both for development and production, this code looks for the configuration file `flask_app.py.json`
+at the very same directory as it is installed. There are a couple of pre-configured files `flask_app.py.json.dev` and `flask_app.py.json.prod`
+which can be symlinked to `flask_app.py.json`.
+
 ## API integration into Apache
 
 This API can be integrated into an Apache instance. The instance must have the module [WSGI](https://modwsgi.readthedocs.io/en/develop/) installed (package `libapache2-mod-wsgi-py3` in Ubuntu).
