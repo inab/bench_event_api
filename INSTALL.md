@@ -17,8 +17,9 @@ The source code of this API is written using the [Flask framework](http://flask.
 -   The creation of a virtual environment and installation of the dependencies in that environment is done running:
 
 ```bash
-virtualenv -p python3 .pyenv
+python3 -m venv .pyenv
 source .pyenv/bin/activate
+pip install --upgrade pip wheel
 pip install -r requirements.txt -c constraints.txt
 ```
 
@@ -39,7 +40,9 @@ sudo service apache2 restart
 
 		ErrorLog ${APACHE_LOG_DIR}/error.log
         CustomLog ${APACHE_LOG_DIR}/access.log combined
-
+		
+		# Added to ensure Apache forwards authentication headers to Flask
+		WSGIPassAuthorization On
 		WSGIDaemonProcess flask_app python-home=/path/to/bench_event_api/.pyenv
 		WSGIProcessGroup flask_app
 		WSGIApplicationGroup %{GLOBAL}
