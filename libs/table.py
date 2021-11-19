@@ -1,14 +1,16 @@
-#! /usr/bin/python3.6
+#!/usr/bin/env python3
+
 from __future__ import division
-from flask import (
-    Blueprint, jsonify, request
-)
+
+import logging
+from flask import abort
 from sklearn.cluster import KMeans
 import numpy as np
 import pandas
 import json
 import requests
 
+logger = logging.getLogger(__name__)
 
 # funtion that gets quartiles for x and y values
 def plot_square_quartiles(tools_dict, better, percentile=50):
@@ -53,9 +55,19 @@ def plot_square_quartiles(tools_dict, better, percentile=50):
 def normalize_data(x_values, means):
     maxX = max(x_values)
     maxY = max(means)
-
-    x_norm = [x / maxX for x in x_values]
-    means_norm = [y / maxY for y in means]
+    
+    # Are all values 0?
+    if maxX != 0:
+        x_norm = [x / maxX for x in x_values]
+    else:
+        x_norm = list(x_values)
+    
+    # Are all values 0?
+    if maxY != 0:
+        means_norm = [y / maxY for y in means]
+    else:
+        means_norm = list(means)
+        
     return x_norm, means_norm
 
 
@@ -223,57 +235,108 @@ def build_table(data, classificator_id, tool_names, challenge_list):
     
     return quartiles_table
 
+# Get datasets from given benchmarking event
+CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event_id: String) {
+    getBenchmarkingEvents(benchmarkingEventFilters:{id: $bench_event_id}) {
+        _id
+        community_id
+    }
+    getChallenges(challengeFilters: {benchmarking_event_id: $bench_event_id}) {
+        _id
+        acronym
+        metrics_categories{
+            metrics {
+                metrics_id
+            }
+        }
+        datasets {
+            _id
+            datalink{
+                inline_data
+            }
+            depends_on{
+                tool_id
+                metrics_id
+            }
+            type
+        }
+    }
+}'''
+
+TOOLS_FROM_COMMUNITY_GRAPHQL = '''query ToolsFromCommunity($community_id: String) {
+    getTools(toolFilters:{community_id: $community_id}) {
+        _id
+        name
+    }
+}'''
+
+import urllib.request
+#import http.client
+#
+#http.client.HTTPConnection.debuglevel = 1
+
 def get_data(base_url, bench_id, classificator_id, challenge_list):
+    #logging.getLogger().setLevel(logging.DEBUG)
+    #requests_log = logging.getLogger("requests.packages.urllib3")
+    #requests_log.setLevel(logging.DEBUG)
+    #requests_log.propagate = True
     try:
-        url = base_url + "sciapi/graphql"
+        url = base_url + "/graphql"
         # get datasets for provided benchmarking event
-        json = { 'query' : '{\
-                                getBenchmarkingEvents(benchmarkingEventFilters:{id:"'+ bench_id + '"}) {\
-                                    _id\
-                                    community_id\
-                                }\
-                                getChallenges(challengeFilters: {benchmarking_event_id: "'+ bench_id + '"}) {\
-                                    _id\
-                                    acronym\
-                                    metrics_categories{\
-                                        metrics {\
-                                            metrics_id\
-                                        }\
-                                    }\
-                                    datasets {\
-                                        _id\
-                                        datalink{\
-                                            inline_data\
-                                        }\
-                                        depends_on{\
-                                            tool_id\
-                                            metrics_id\
-                                        }\
-                                        type\
-                                    }\
-                                }\
-                            }' }
-
-        r = requests.post(url=url, json=json, verify=False )
+        query1 = {
+            'query': CHALLENGES_FROM_BE_GRAPHQL,
+            'variables': {
+                'bench_event_id': bench_id
+            }
+        }
+        logger.debug(f"Getting challenges from {bench_id}")
+        #data1 = json.dumps(query1,indent=4,sort_keys=True)
+        #logger.error(data1)
+        #data1b = data1.encode('utf-8')
+        #req1 = urllib.request.Request(
+        #    url,
+        #    data=data1b,
+        #    method='POST',
+        #    headers={
+        #        'Accept': '*/*',
+        #        'Content-Type': 'application/json;charset=UTF-8',
+        #        'Content-Length': len(data1b)
+        #    }
+        #)
+        #with urllib.request.urlopen(req1) as res1:
+        #    resto1 = res1.read()
+        #    r1 = resto1.decode('utf-8')
+        #    print(r1)
+        #    response = json.loads(r1)
+        
+        r = requests.post(url=url, json=query1, verify=True, headers={
+                'Content-Type': 'application/json'
+            } )
         response = r.json()
-        if response["data"]["getBenchmarkingEvents"] == []:
-
-            return { 'data': None}
+        if len(response["data"]["getBenchmarkingEvents"]) == 0:
+            logger.error(f"{bench_id} not found")
+            return None
 
         else:
             data = response["data"]["getChallenges"]
             # get tools for provided benchmarking event
             community_id = response["data"]["getBenchmarkingEvents"][0]["community_id"]
-            json2 = { 'query' : '{\
-                                    getTools(toolFilters:{community_id:"'+ community_id + '"}) {\
-                                        _id\
-                                        name\
-                                    }\
-                                }' }
+            logger.debug(f'Benchmarking event {bench_id} belongs to community {community_id}')
+            json2 = {
+                'query': TOOLS_FROM_COMMUNITY_GRAPHQL,
+                'variables': {
+                    'community_id': community_id
+                }
+            }
 
-            r = requests.post(url=url, json=json2, verify=False )
+            r = requests.post(url=url, json=json2, verify=True )
             response2 = r.json()
             tool_list = response2["data"]["getTools"]
+            if len(tool_list) == 0:
+                logger.error(f"Tools for {community_id} not found")
+                return None
+            logger.debug(f'{len(tool_list)} tools for {community_id}')
+            
             # iterate over the list of tools to generate a dictionary
             tool_names = {}
             for tool in tool_list:
@@ -285,46 +348,5 @@ def get_data(base_url, bench_id, classificator_id, challenge_list):
             return result
 
     except Exception as e:
-
-        print (e)
-
-
-# create blueprint and define url
-bp = Blueprint('table', __name__)
-
-
-
-@bp.route('/')
-def index_page():
-    return "<b>FLASK BENCHMARKING EVENT API</b><br><br>\
-            USAGE:<br><br> \
-            http://webpage:8080/bench_event_id/desired_classification"
-
-@bp.route('/<string:bench_id>')
-@bp.route('/<string:bench_id>/<string:classificator_id>', methods = ['POST', 'GET'])
-def compute_classification(bench_id, classificator_id="diagonals"):
-	
-    mode = "dev"
-    if mode == "production":
-	    base_url = "https://openebench.bsc.es/"
-    else:
-	    base_url = "https://dev-openebench.bsc.es/"
-    
-    if request.method == 'POST':
-        challenge_list = request.get_data()
-        out = get_data(base_url, bench_id, classificator_id, challenge_list)
-        response = jsonify(out)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
-
-    else:
-        out = get_data(base_url, bench_id, classificator_id, [])
-        response = jsonify(out)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
-        # return send_from_directory("/home/jgarrayo/public_html/flask_table/", "table.svg", as_attachment=False)
-        # return send_file(out, mimetype='svg')
-        # return render_template('index.html', data=out)
-
-# if __name__ == "__main__":
-#     app.run()
+        logger.exception("Unexpected exception")
+        abort(500)
