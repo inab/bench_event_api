@@ -205,13 +205,17 @@ def build_table(data, classificator_id, tool_names, challenge_list):
             # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
             for dataset in challenge['datasets']:
                 if dataset['type'] == "assessment":
+                    logger.debug(json.dumps(dataset, indent=4))
                     #get tool which this dataset belongs to
                     tool_id = dataset['depends_on']['tool_id']
                     tool_name = tool_names[tool_id]
                     if tool_name not in tools:
                         tools[tool_name] = [0]*2
                     # get value of the two metrics
-                    metric = float(dataset['datalink']['inline_data']['value'])
+                    inline_data = dataset['datalink']['inline_data']
+                    if isinstance(inline_data, str):
+                        inline_data = json.loads(inline_data)
+                    metric = float(inline_data['value'])
                     if dataset['depends_on']['metrics_id'] == challenge_X_metric:
                         tools[tool_name][0] = metric
                     elif dataset['depends_on']['metrics_id'] == challenge_Y_metric:
