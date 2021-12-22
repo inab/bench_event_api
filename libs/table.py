@@ -185,57 +185,81 @@ def cluster_tools(tools_dict, better):
 ###########################################################################################################
 
 
-def build_table(data, classificator_id, tool_names, challenge_list):
+def build_table(data, classificator_id, tool_names, metrics, challenge_list):
 
     # this dictionary will store all the information required for the quartiles table
     quartiles_table = []
+    if classificator_id == "squares":
+        classifier = plot_square_quartiles
+
+    elif classificator_id == "clusters":
+        classifier = cluster_tools
+
+    else:
+        classifier = plot_diagonal_quartiles
 
     for challenge in data:
         
         challenge_id = challenge['acronym']
         challenge_OEB_id = challenge['_id']
-        challenge_X_metric = challenge['metrics_categories'][0]['metrics'][0]['metrics_id']
-        challenge_Y_metric = challenge['metrics_categories'][0]['metrics'][1]['metrics_id']
+        
+        if len(challenge_list) == 0 or str.encode(challenge_OEB_id) in challenge_list:
+            # Metrics categories is optional
+            metrics_categories = challenge.get('metrics_categories')
+            
+            # Skip it!
+            if metrics_categories is None:
+                # FIXME: Tell something more meaningful
+                continue
+            
+            for metrics_category in metrics_categories:
+                # Right now, we are skipping aggregation metrics
+                if metrics_category['category'] != 'assessment':
+                    continue
+                
+                # And we are also skipping the cases where we don't have 
+                # enough information to do the work
+                if len(metrics_category['metrics']) <= 1:
+                    continue
+                
+                for i_metrics_X, metrics_X in enumerate(metrics_category['metrics']):
+                    for metrics_Y in metrics_category['metrics'][i_metrics_X+1:]:
+                        challenge_X_metric = metrics_X['metrics_id']
+                        challenge_Y_metric = metrics_Y['metrics_id']
 
-        if challenge_list == [] or str.encode(challenge_OEB_id) in challenge_list:
 
-            challenge_object = {}
-            tools = {}
-            better = 'top-right'
-            # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
-            for dataset in challenge['datasets']:
-                if dataset['type'] == "assessment":
-                    logger.debug(json.dumps(dataset, indent=4))
-                    #get tool which this dataset belongs to
-                    tool_id = dataset['depends_on']['tool_id']
-                    tool_name = tool_names[tool_id]
-                    if tool_name not in tools:
-                        tools[tool_name] = [0]*2
-                    # get value of the two metrics
-                    inline_data = dataset['datalink']['inline_data']
-                    if isinstance(inline_data, str):
-                        inline_data = json.loads(inline_data)
-                    metric = float(inline_data['value'])
-                    if dataset['depends_on']['metrics_id'] == challenge_X_metric:
-                        tools[tool_name][0] = metric
-                    elif dataset['depends_on']['metrics_id'] == challenge_Y_metric:
-                        tools[tool_name][1] = metric
+                        challenge_object = {}
+                        tools = {}
+                        better = 'top-right'
+                        # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
+                        for dataset in challenge['datasets']:
+                            if dataset['type'] == "assessment":
+                                logger.debug(json.dumps(dataset, indent=4))
+                                #get tool which this dataset belongs to
+                                tool_id = dataset['depends_on']['tool_id']
+                                tool_name = tool_names[tool_id]
+                                if tool_name not in tools:
+                                    tools[tool_name] = [0]*2
+                                # get value of the two metrics
+                                inline_data = dataset['datalink']['inline_data']
+                                if isinstance(inline_data, str):
+                                    inline_data = json.loads(inline_data)
+                                metric = float(inline_data['value'])
+                                if dataset['depends_on']['metrics_id'] == challenge_X_metric:
+                                    tools[tool_name][0] = metric
+                                elif dataset['depends_on']['metrics_id'] == challenge_Y_metric:
+                                    tools[tool_name][1] = metric
 
-            # get quartiles depending on selected classification method
+                        # get quartiles depending on selected classification method
 
-            if classificator_id == "squares":
-                tools_quartiles = plot_square_quartiles(tools, better)
+                        tools_quartiles = classifier(tools, better)
 
-            elif classificator_id == "clusters":
-                tools_quartiles = cluster_tools(tools, better)
-
-            else:
-                tools_quartiles = plot_diagonal_quartiles( tools, better)
-
-            challenge_object["_id"] = challenge_OEB_id
-            challenge_object["acronym"] = challenge_id
-            challenge_object["participants"] = tools_quartiles
-            quartiles_table.append(challenge_object)
+                        challenge_object["_id"] = challenge_OEB_id
+                        challenge_object["acronym"] = challenge_id
+                        challenge_object['metrics_x'] = metrics[challenge_X_metric]
+                        challenge_object['metrics_y'] = metrics[challenge_Y_metric]
+                        challenge_object["participants"] = tools_quartiles
+                        quartiles_table.append(challenge_object)
     
     return quartiles_table
 
@@ -249,6 +273,7 @@ CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event
         _id
         acronym
         metrics_categories{
+            category
             metrics {
                 metrics_id
             }
@@ -267,10 +292,18 @@ CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event
     }
 }'''
 
-TOOLS_FROM_COMMUNITY_GRAPHQL = '''query ToolsFromCommunity($community_id: String) {
+TOOLS_AND_METRICS_FROM_COMMUNITY_GRAPHQL = '''query ToolsFromCommunity($community_id: String) {
     getTools(toolFilters:{community_id: $community_id}) {
         _id
         name
+    }
+    getMetrics {
+        _id
+        orig_id
+        title
+        description
+        representation_hints
+        _metadata
     }
 }'''
 
@@ -325,35 +358,47 @@ def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
             logger.error(f"{bench_id} not found")
             return None
 
-        else:
-            data = response["data"]["getChallenges"]
-            # get tools for provided benchmarking event
-            community_id = response["data"]["getBenchmarkingEvents"][0]["community_id"]
-            logger.debug(f'Benchmarking event {bench_id} belongs to community {community_id}')
-            json2 = {
-                'query': TOOLS_FROM_COMMUNITY_GRAPHQL,
-                'variables': {
-                    'community_id': community_id
-                }
+        data = response["data"]["getChallenges"]
+        # get tools for provided benchmarking event
+        community_id = response["data"]["getBenchmarkingEvents"][0]["community_id"]
+        logger.debug(f'Benchmarking event {bench_id} belongs to community {community_id}')
+        
+        jsonTM = {
+            'query': TOOLS_AND_METRICS_FROM_COMMUNITY_GRAPHQL,
+            'variables': {
+                'community_id': community_id
             }
+        }
 
-            r = requests.post(url=url, json=json2, verify=True, headers=common_headers)
-            response2 = r.json()
-            tool_list = response2["data"]["getTools"]
-            if len(tool_list) == 0:
-                logger.error(f"Tools for {community_id} not found")
-                return None
-            logger.debug(f'{len(tool_list)} tools for {community_id}')
-            
-            # iterate over the list of tools to generate a dictionary
-            tool_names = {}
-            for tool in tool_list:
-                tool_names[tool["_id"]] = tool["name"]
+        r = requests.post(url=url, json=jsonTM, verify=True, headers=common_headers)
+        responseTM = r.json()
+        import sys
+        json.dump(responseTM, sys.stderr, indent=4)
+        tool_list = responseTM["data"]["getTools"]
+        if len(tool_list) == 0:
+            logger.error(f"Tools for {community_id} not found")
+            return None
+        metrics_list = responseTM["data"]["getMetrics"]
+        if len(metrics_list) == 0:
+            logger.error(f"Metrics for {community_id} not found")
+            return None
+        logger.debug(f'{len(tool_list)} tools and {len(metrics_list)} metrics for {community_id}')
+        
+        # iterate over the list of tools to generate a dictionary
+        tool_names = {}
+        for tool in tool_list:
+            tool_names[tool["_id"]] = tool["name"]
+        
+        # And the same for metrics
+        metrics = {
+            m['_id']: m
+            for m in metrics_list
+        }
+        
+        # compute the classification
+        result = build_table(data, classificator_id, tool_names, metrics, challenge_list)
 
-            # compute the classification
-            result = build_table(data, classificator_id, tool_names, challenge_list)
-
-            return result
+        return result
 
     except Exception as e:
         logger.exception("Unexpected exception")
