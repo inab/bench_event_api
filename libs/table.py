@@ -213,9 +213,9 @@ def build_table(data, classificator_id, tool_names, metrics, challenge_list):
                 continue
             
             for metrics_category in metrics_categories:
-                # Right now, we are skipping aggregation metrics
-                if metrics_category['category'] != 'assessment':
-                    continue
+                ## Right now, we are skipping aggregation metrics
+                #if metrics_category['category'] != 'assessment':
+                #    continue
                 
                 # And we are also skipping the cases where we don't have 
                 # enough information to do the work
@@ -228,7 +228,6 @@ def build_table(data, classificator_id, tool_names, metrics, challenge_list):
                         challenge_Y_metric = metrics_Y['metrics_id']
 
 
-                        challenge_object = {}
                         tools = {}
                         better = 'top-right'
                         # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
@@ -253,12 +252,15 @@ def build_table(data, classificator_id, tool_names, metrics, challenge_list):
                         # get quartiles depending on selected classification method
 
                         tools_quartiles = classifier(tools, better)
-
-                        challenge_object["_id"] = challenge_OEB_id
-                        challenge_object["acronym"] = challenge_id
-                        challenge_object['metrics_x'] = metrics[challenge_X_metric]
-                        challenge_object['metrics_y'] = metrics[challenge_Y_metric]
-                        challenge_object["participants"] = tools_quartiles
+                        
+                        challenge_object = {
+                            "_id": challenge_OEB_id,
+                            "acronym": challenge_id,
+                            'metrics_x': metrics[challenge_X_metric],
+                            'metrics_y': metrics[challenge_Y_metric],
+                            'metrics_category': metrics_category['category'],
+                            "participants": tools_quartiles
+                        }
                         quartiles_table.append(challenge_object)
     
     return quartiles_table
