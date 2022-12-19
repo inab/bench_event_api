@@ -1,0 +1,42 @@
+fail_fast: true
+
+repos:
+  - repo: local
+    hooks:
+      - id: pylint
+        name: Local PyLint
+        language: system
+        require_serial: true
+        types:
+          - python
+        exclude: "^[^/]*env/|dev-[^/]*/"
+        entry: pylint -j 0
+      - id: mypy
+        name: Local MyPy
+        language: system
+        types:
+          - python
+#        files: \.py$
+        exclude: "^[^/]*env/|dev-[^/]*/"
+        require_serial: true
+        entry: mypy --strict --show-error-codes --no-warn-unused-ignores
+    
+  - repo: https://github.com/inab/python-extended-json-schema-validator.git
+    rev: v0.11.0
+    hooks:
+#      - id: identity
+      - id: jsonschema_dir_validate
+        name: Check jsonschema
+        types:
+          - json
+        files: ^oeb_level2/schemas/.*\.json$
+        require_serial: true
+        pass_filenames: false
+        args: [ oeb_level2/schemas ]
+
+#  - repo: https://github.com/ambv/black
+#    rev: 22.6.0
+#    hooks:
+#      - id: black
+#        exclude: "^[^/]*env/|dev-[^/]*/"
+#        args: [--diff, --check]
