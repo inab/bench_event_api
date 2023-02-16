@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import json
 import os
 import sys
 from flask import Flask
@@ -32,9 +33,15 @@ app = Flask(__name__)
 
 config_file = basis + '.json'
 if os.path.exists(config_file):
-    import json
     with open(config_file, mode="r", encoding="utf-8") as cF:
         app.config.update(json.load(cF))
+
+auth_config_file = config_file + '.auth'
+if os.path.exists(auth_config_file):
+    with open(auth_config_file, mode="r", encoding="utf-8") as cF:
+        app.config.update({"oeb_auth": json.load(cF)})
+else:
+    logging.critical(f"The file with the auth setup {auth_config_file} must exist, in order to be granted access to TestActions")
 
 CORS(app)
 

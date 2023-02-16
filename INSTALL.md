@@ -28,6 +28,9 @@ As the API can be used both for development and production, this code looks for 
 at the very same directory as it is installed. There are a couple of pre-configured files `flask_app.py.json.dev` and `flask_app.py.json.prod`
 which can be symlinked to `flask_app.py.json`.
 
+Also, as the API queries collection TestActions, which has controlled access, a configuration file `flask_app.py.json.auth` is also needed.
+There is a template of this file at [flask_app.py.json.auth.template](flask_app.py.json.auth.template).
+
 ## API integration into Apache
 
 This API can be integrated into an Apache instance. The instance must have the module [WSGI](https://modwsgi.readthedocs.io/en/develop/) installed (package `libapache2-mod-wsgi-py3` in Ubuntu).

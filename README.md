@@ -2,7 +2,7 @@
 
 API that gets data from the [OpenEBench scientific API](https://openebench.bsc.es/api/scientific/Community.html) for a particular community and benchmarking event and applies a certain results classification method in order to retrieve a 'summary' for that event.
 
--   Before running the Benchmarking Event API, please follow the instructions in [INSTALL.md](INSTALL.md).
+-   **Before running** the Benchmarking Event API, please follow the instructions in [INSTALL.md](INSTALL.md).
 
 *   The API can be run at http://localhost:5000/ in debug mode using the next command line:
 

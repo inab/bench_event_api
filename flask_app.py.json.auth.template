@@ -1,0 +1,6 @@
+{
+        "authURI": "KEYCLOAK_URI_WITH_REALM",
+        "clientId": "CLIENT_ID",
+        "user": "USER",
+        "pass": "PASSWORD"
+}
