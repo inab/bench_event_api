@@ -295,6 +295,8 @@ def build_table(data, classificator_id, tool_names, metrics, challenge_list):
                         }
                         quartiles_table.append(challenge_object)
     
+    # Sort by acronym
+    quartiles_table.sort(key=lambda co: co["acronym"])
     return quartiles_table
 
 # Get datasets from given benchmarking event
