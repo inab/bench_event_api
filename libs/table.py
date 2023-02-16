@@ -231,12 +231,44 @@ def build_table(data, classificator_id, tool_names, metrics, challenge_list):
                         tools = {}
                         better = 'top-right'
                         # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
-                        for dataset in challenge['datasets']:
-                            if dataset['type'] == "assessment":
-                                logger.debug(json.dumps(dataset, indent=4))
-                                #get tool which this dataset belongs to
-                                tool_id = dataset['depends_on']['tool_id']
-                                tool_name = tool_names[tool_id]
+                        possible_participant_datasets = {}
+                        for dataset in challenge['participant_datasets']:
+                            #logger.debug(json.dumps(dataset, indent=4))
+                            #get tool which this dataset belongs to
+                            tool_id = dataset['depends_on']['tool_id']
+                            tool_name = tool_names[tool_id]
+                            possible_participant_datasets[dataset["_id"]] = (tool_id, tool_name)
+                            
+                        possible_assessments = set(map(lambda ad: ad["_id"], challenge['assessment_datasets']))
+                        # It maps assessment datasets to the tool(s) which
+                        # generated the participant dataset which was
+                        # assessed
+                        assessment_actions = {}
+                        for event in challenge["metrics_test_actions"]:
+                            tools_ids = []
+                            assessment_ids = []
+                            for i_dataset in event["involved_datasets"]:
+                                i_role = i_dataset["role"]
+                                if i_role == "incoming":
+                                    incoming_dataset_id = i_dataset["dataset_id"]
+                                    tool_ids = possible_participant_datasets.get(incoming_dataset_id)
+                                    if tool_ids is not None:
+                                        tools_ids.append(tool_ids)
+                                elif i_role == "outgoing":
+                                    outgoing_dataset_id = i_dataset["dataset_id"]
+                                    if outgoing_dataset_id in possible_assessments:
+                                        assessment_ids.append(outgoing_dataset_id)
+                            
+                            for assessment_id in assessment_ids:
+                                assessment_actions.setdefault(assessment_id, []).extend(tools_ids)
+                        
+                        # At last
+                        for dataset in challenge['assessment_datasets']:
+                            #logger.debug(json.dumps(dataset, indent=4))
+                            #get tool which this dataset belongs to
+                            tools_ids = assessment_actions[dataset["_id"]]
+                            for tool_ids in tools_ids:
+                                tool_id , tool_name = tool_ids
                                 if tool_name not in tools:
                                     tools[tool_name] = [0]*2
                                 # get value of the two metrics
@@ -280,7 +312,7 @@ CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event
                 metrics_id
             }
         }
-        datasets {
+        assessment_datasets: datasets(datasetFilters: {type: "assessment"}) {
             _id
             datalink{
                 inline_data
@@ -290,6 +322,31 @@ CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event
                 metrics_id
             }
             type
+        }
+        participant_datasets: datasets(datasetFilters: {type: "participant"}) {
+            _id
+            datalink{
+                inline_data
+            }
+            depends_on{
+                tool_id
+                metrics_id
+            }
+            type
+        }
+        metrics_test_actions: test_actions(testActionFilters: {action_type: "MetricsEvent"}) {
+          _id
+          action_type
+          challenge_id
+          _metadata
+          orig_id
+          _schema
+          status
+          tool_id
+          involved_datasets {
+              dataset_id
+              role
+          }
         }
     }
 }'''
@@ -315,7 +372,7 @@ import urllib.request
 #http.client.HTTPConnection.debuglevel = 1
 
 def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
-    #logging.getLogger().setLevel(logging.DEBUG)
+    logging.getLogger().setLevel(logging.DEBUG)
     #requests_log = logging.getLogger("requests.packages.urllib3")
     #requests_log.setLevel(logging.DEBUG)
     #requests_log.propagate = True
@@ -356,9 +413,11 @@ def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
         
         r = requests.post(url=url, json=query1, verify=True, headers=common_headers)
         response = r.json()
+        logger.debug(f"Got {len(response['data']['getBenchmarkingEvents'])} benchmarking events and {len(response['data']['getChallenges'])} challenges")
         if len(response["data"]["getBenchmarkingEvents"]) == 0:
             logger.error(f"{bench_id} not found")
             return None
+        
 
         data = response["data"]["getChallenges"]
         # get tools for provided benchmarking event
@@ -374,8 +433,9 @@ def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
 
         r = requests.post(url=url, json=jsonTM, verify=True, headers=common_headers)
         responseTM = r.json()
-        import sys
-        json.dump(responseTM, sys.stderr, indent=4)
+        #import sys
+        #json.dump(responseTM, sys.stderr, indent=4)
+        
         tool_list = responseTM["data"]["getTools"]
         if len(tool_list) == 0:
             logger.error(f"Tools for {community_id} not found")
@@ -384,7 +444,7 @@ def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
         if len(metrics_list) == 0:
             logger.error(f"Metrics for {community_id} not found")
             return None
-        logger.debug(f'{len(tool_list)} tools and {len(metrics_list)} metrics for {community_id}')
+        logger.debug(f'{len(tool_list)} tools for {community_id} and {len(metrics_list)} possible metrics')
         
         # iterate over the list of tools to generate a dictionary
         tool_names = {}
@@ -398,6 +458,16 @@ def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
         }
         
         # compute the classification
+        #logger.info("data")
+        #logger.info(data)
+        #logger.info("classificator_id")
+        #logger.info(classificator_id)
+        #logger.info("tool_names")
+        #logger.info(tool_names)
+        #logger.info("metrics")
+        #logger.info(metrics)
+        #logger.info("challenge_list")
+        #logger.info(challenge_list)
         result = build_table(data, classificator_id, tool_names, metrics, challenge_list)
 
         return result
