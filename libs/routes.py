@@ -8,6 +8,7 @@ import logging
 import urllib.parse
 
 from . import table
+from . import auth
 
 ###########################################################################################################
 ###########################################################################################################
@@ -57,6 +58,15 @@ def compute_classification(bench_id, classificator_id="diagonals"):
             fragment=''
         )
     )
+    
+    if auth_header is None:
+        oeb_auth = current_app.config.get("oeb_auth")
+        if isinstance(oeb_auth, dict):
+            try:
+                access_token = auth.getAccessToken(oeb_auth)
+                auth_header = "Bearer " + access_token
+            except:
+                logger.exception("Failed to default auth")
     
     out = table.get_data(oeb_base_url, auth_header, bench_id, classificator_id, challenge_list)
     if out is None:
