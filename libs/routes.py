@@ -41,7 +41,7 @@ def compute_classification(bench_id, classificator_id="diagonals"):
     oeb_sci = current_app.config.get("oeb_scientific", {})
     parsed = urllib.parse.urlparse(request.base_url)
     oeb_scheme = 'https'
-    if parsed.netloc.startswith('localhost'):
+    if parsed.netloc.startswith('localhost') or parsed.netloc.startswith('127.0.0.1'):
         oeb_server = oeb_sci.get('default_server', DEFAULT_oeb_server)
     else:
         oeb_server = parsed.netloc
