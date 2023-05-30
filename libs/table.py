@@ -308,6 +308,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                     better = None
                     ass_part_datasets = []
                     tools = {}
+                    agg_label = challenge_id
                     for i_dataset in agg_event["involved_datasets"]:
                         # We are capturing the aggregation dataset
                         if i_dataset["role"] == "outgoing":
@@ -338,7 +339,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                             if isinstance(challenge_Y_metric_entry, list):
                                 challenge_Y_metric_entry = challenge_Y_metric_entry[0]
                             better = visualization.get("optimization", "top-right")
-                            
+                            agg_label += "\n" + challenge_X_metric_label + "+" + challenge_Y_metric_label
                             # Now, the values
                             for cha_par in inline_data["challenge_participants"]:
                                 tools[cha_par["tool_id"]] = [ cha_par["metric_x"], cha_par["metric_y"] ]
@@ -354,7 +355,8 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                         tools_quartiles = classifier(tools, better)
                         challenge_object = {
                             "_id": challenge_OEB_id,
-                            "acronym": challenge_id,
+                            "aggregation_id": agg_dataset["_id"],
+                            "acronym": agg_label,
                             'metrics_x': challenge_X_metric_entry,
                             'metrics_y': challenge_Y_metric_entry,
                             'metrics_category': "aggregation",
