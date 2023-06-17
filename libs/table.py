@@ -5,6 +5,7 @@ from __future__ import division
 import logging
 from flask import abort
 from sklearn.cluster import KMeans
+import statistics
 import numpy as np
 import pandas
 import json
@@ -15,186 +16,195 @@ logger = logging.getLogger(__name__)
 # funtion that gets quartiles for x and y values
 def plot_square_quartiles(tools_dict, better, percentile=50):
 
-    # generate 3 lists: 
-    x_values = []
-    means = []
+    # generate 2 lists: 
+    the_values = [] 
     tools = []
+    dims = None
     for key, metrics in tools_dict.items():
         tools.append(key)
-        x_values.append(metrics[0])
-        means.append(metrics[1])
+        the_values.append(metrics)
+        if dims is None:
+            dims = len(metrics)
+    
+    dim_percentiles = tuple(np.nanpercentile(col_vals, percentile) for col_vals in zip(*the_values))
 
-    x_percentile, y_percentile = (np.nanpercentile(x_values, percentile), np.nanpercentile(means, percentile))
-
-    # create a dictionary with tools and their corresponding quartile
+    dimcomp = None
+    if dims == 1:
+        if better.endswith("right"):
+            dimcomp = [ True ]
+        else:
+            dimcomp = [ False ]
+    elif dims == 2:
+        if better == "top-right":
+            dimcomp = [ True, True ]
+        elif better == "bottom-right":
+            dimcomp = [ False, True ]
+        elif better == "top-left":
+            dimcomp = [ True, False ]
+        elif better == "bottom-left":
+            dimcomp = [ False, False ]
+    else:
+        dimcomp = dims * [ True ]
+    
+    # Create a dictionary with tools and their corresponding quartile
+    # Due the changes in dimensionality, for two dimensions are
+    # 4 possible square quartiles, for three dimensions are 8 cubic quartiles,
+    # for four dimensions are 16 hypercubic quartiles, and so on
     tools_quartiles = {}
-    if better == "bottom-right":
-        for i, val in enumerate(tools, 0):
-            if x_values[i] >= x_percentile and means[i] <= y_percentile:
-                tools_quartiles[tools[i]] = 1
-            elif x_values[i] >= x_percentile and means[i] > y_percentile:
-                tools_quartiles[tools[i]] = 3
-            elif x_values[i] < x_percentile and means[i] > y_percentile:
-                tools_quartiles[tools[i]] = 4
-            elif x_values[i] < x_percentile and means[i] <= y_percentile:
-                tools_quartiles[tools[i]] = 2
-    elif better == "top-right":
-        for i, val in enumerate(tools, 0):
-            if x_values[i] >= x_percentile and means[i] < y_percentile:
-                tools_quartiles[tools[i]] = 3
-            elif x_values[i] >= x_percentile and means[i] >= y_percentile:
-                tools_quartiles[tools[i]] = 1
-            elif x_values[i] < x_percentile and means[i] >= y_percentile:
-                tools_quartiles[tools[i]] = 2
-            elif x_values[i] < x_percentile and means[i] < y_percentile:
-                tools_quartiles[tools[i]] = 4
-    elif better == "bottom-left":
-        for i, val in enumerate(tools, 0):
-            if x_values[i] > x_percentile and means[i] < y_percentile:
-                tools_quartiles[tools[i]] = 2
-            elif x_values[i] > x_percentile and means[i] >= y_percentile:
-                tools_quartiles[tools[i]] = 4
-            elif x_values[i] <= x_percentile and means[i] >= y_percentile:
-                tools_quartiles[tools[i]] = 1
-            elif x_values[i] <= x_percentile and means[i] < y_percentile:
-                tools_quartiles[tools[i]] = 3
-    elif better == "top-left":
-        for i, val in enumerate(tools, 0):
-            if x_values[i] > x_percentile and means[i] < y_percentile:
-                tools_quartiles[tools[i]] = 2
-            elif x_values[i] > x_percentile and means[i] >= y_percentile:
-                tools_quartiles[tools[i]] = 4
-            elif x_values[i] <= x_percentile and means[i] >= y_percentile:
-                tools_quartiles[tools[i]] = 3
-            elif x_values[i] <= x_percentile and means[i] < y_percentile:
-                tools_quartiles[tools[i]] = 1
-    return (tools_quartiles)
+    for tool, t_values in zip(tools, the_values):
+        t_quart = 0
+        for d_comp, t_value, d_percentile in zip(reversed(dimcomp), reversed(t_values), reversed(dim_percentiles)):
+            t_quart <<= 1
+            if d_comp:
+                if t_value < d_percentile:
+                    t_quart |= 1
+            elif t_value >= d_percentile:
+                t_quart |= 1
+            
+        
+        tools_quartiles[tool] = t_quart + 1
+    return tools_quartiles
 
 
 # function to normalize the x and y axis to 0-1 range
-def normalize_data(x_values, means):
-    maxX = max(x_values)
-    maxY = max(means)
+def normalize_series(values: "Sequence[float]") -> "Sequence[float]":
+    maxV = max(values)
     
     # Are all values 0?
-    if maxX != 0:
-        x_norm = [x / maxX for x in x_values]
+    if maxV != 0:
+        v_norm = [v / maxV for v in values]
     else:
-        x_norm = list(x_values)
-    
-    # Are all values 0?
-    if maxY != 0:
-        means_norm = [y / maxY for y in means]
-    else:
-        means_norm = list(means)
+        v_norm = list(values)
         
-    return x_norm, means_norm
+    return v_norm
+
+def normalize_data(args: "Sequence[Sequence[float]]") -> "Tuple[Tuple[float, ...], ...]":
+    return tuple(zip(*[normalize_series(zipped_arg) for zipped_arg in zip(*args)]))
 
 
 # funtion that splits the analysed tools into four quartiles, according to the asigned score
-def get_quartile_points(scores_and_values, first_quartile, second_quartile, third_quartile):
-    tools_quartiles = {}
-    for i, val in enumerate(scores_and_values, 0):
-        if scores_and_values[i][0] > third_quartile:
-            tools_quartiles[scores_and_values[i][3]] = 1
-        elif second_quartile < scores_and_values[i][0] <= third_quartile:
-            tools_quartiles[scores_and_values[i][3]] = 2
-        elif first_quartile < scores_and_values[i][0] <= second_quartile:
-            tools_quartiles[scores_and_values[i][3]] = 3
-        elif scores_and_values[i][0] <= first_quartile:
-            tools_quartiles[scores_and_values[i][3]] = 4
-
-    return (tools_quartiles)
-
-
-# funtion that separate the points through diagonal quartiles based on the distance to the 'best corner'
-def plot_diagonal_quartiles( tools_dict, better):
-
-    # generate 3 lists: 
-    x_values = []
-    means = []
-    tools = []
-    for key, metrics in tools_dict.items():
-        tools.append(key)
-        x_values.append(metrics[0])
-        means.append(metrics[1])
-
-    # normalize data to 0-1 range
-    x_norm, means_norm = normalize_data(x_values, means)
-
-    # compute the scores for each of the tool. based on their distance to the x and y axis
-    scores = []
-    for i, val in enumerate(x_norm, 0):
-        if better == "bottom-right":
-            scores.append(x_norm[i] + (1 - means_norm[i]))
-        elif better == "top-right":
-            scores.append(x_norm[i] + means_norm[i])
-        elif better == "bottom-left":
-            scores.append(x_norm[i] + (1 - means_norm[i]))
-        elif better == "top-left":
-            scores.append(x_norm[i] + means_norm[i])
-
-    # region sort the list in descending order
-    scores_and_values = sorted([[scores[i], x_values[i], means[i], tools[i]] for i, val in enumerate(scores, 0)],
-                               reverse=True)
-    scores = sorted(scores, reverse=True)
+def get_quartile_points(scores_and_values):
+    scores = list(map(lambda s: s[0], scores_and_values))
 
     first_quartile, second_quartile, third_quartile = (
         np.nanpercentile(scores, 25), np.nanpercentile(scores, 50), np.nanpercentile(scores, 75))
 
-    # split in quartiles
-    tools_quartiles = get_quartile_points(scores_and_values, first_quartile, second_quartile, third_quartile)
+    tools_quartiles = {}
+    for i, scores_and_value in enumerate(scores_and_values):
+        sv = scores_and_value[0]
+        if sv > third_quartile:
+            quar_number = 1
+        elif second_quartile < sv <= third_quartile:
+            quar_number = 2
+        elif first_quartile < sv <= second_quartile:
+            quar_number = 3
+        elif sv <= first_quartile:
+            quar_number = 4
+        else:
+            # Should never happen
+            quar_number = 0
+        tools_quartiles[scores_and_value[2]] = quar_number
 
-    return (tools_quartiles)
+    return tools_quartiles
+
+
+# funtion that separate the points through diagonal quartiles based on the distance to the 'best corner'
+def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: "str"):
+
+    # generate 2 lists: 
+    the_values = [] 
+    tools = []
+    dims = None
+    for key, metrics in tools_dict.items():
+        tools.append(key)
+        the_values.append(metrics)
+        if dims is None:
+            dims = len(metrics)
+    
+    # normalize data to 0-1 range
+    norm_values = normalize_data(the_values)
+
+    # compute the scores for each of the tool. based on their distance to the x and y axis
+    dimcorr = None
+    if dims == 1:
+        if better.endswith("right"):
+            dimcorr = None
+        else:
+            dimcorr = [ True ]
+    elif dims == 2:
+        if better == "top-right":
+            dimcorr = None
+        elif better == "bottom-right":
+            dimcorr = [ True, False ]
+        elif better == "top-left":
+            dimcorr = [ False, True ]
+        elif better == "bottom-left":
+            dimcorr = [ True, True ]
+
+    scores = []
+    for norm_value in norm_values:
+        if dimcorr is None:
+            corr_norm_value = norm_value
+        else:
+            corr_norm_value = tuple(map(lambda dc_norm: 1.0 - dc_norm[1] if dc_norm[0] else dc_norm[1], zip(dimcorr, norm_value)))
+        score = sum(corr_norm_value)
+        scores.append(score)
+
+    # region sort the list in descending order
+    scores_and_values = sorted(zip(scores, the_values, tools), reverse=True)
+    # split in quartiles
+    tools_quartiles = get_quartile_points(scores_and_values)
+
+    return tools_quartiles
 
 
 # function that clusters participants using the k-means algorithm
 def cluster_tools(tools_dict, better):
-
-    # generate 3 lists: 
-    x_values = []
-    means = []
+    # generate 2 lists:
+    the_values = [] 
     tools = []
+    dims = None
     for key, metrics in tools_dict.items():
         tools.append(key)
-        x_values.append(metrics[0])
-        means.append(metrics[1])
-
-    X = np.array(list(zip(x_values, means)))
-    kmeans = KMeans(n_clusters=4, n_init=50, random_state=0).fit(X)
+        the_values.append(metrics)
+        if dims is None:
+            dims = len(metrics)
+    
+    kmeans = KMeans(n_clusters=4, n_init=50, random_state=0).fit(the_values)
 
     cluster_no = kmeans.labels_
 
-    centroids = kmeans.cluster_centers_
+    centroids = kmeans.cluster_centers_.tolist()
 
     # normalize data to 0-1 range
-    x_values = []
-    y_values = []
-    for centroid in centroids:
-        x_values.append(centroid[0])
-        y_values.append(centroid[1])
-    x_norm, y_norm = normalize_data(x_values, y_values)
+    
+    norm_centroids = normalize_data(centroids)
 
     # get distance from centroids to better corner
     distances = []
-    if better == "top-right":
-
-        for x, y in zip(x_norm, y_norm):
-            distances.append(x + y)
-
-    elif better == "bottom-right":
-
-        for x, y in zip(x_norm, y_norm):
-            distances.append(x + (1 - y))
-    elif better == "top-left":
-
-        for x, y in zip(x_norm, y_norm):
-            distances.append((1-x) + y)
-
-    elif better == "bottom-left":
-
-        for x, y in zip(x_norm, y_norm):
-            distances.append((1-x) + (1 - y))
+    dimcorr = None
+    if dims == 1:
+        if better.endswith("right"):
+            dimcorr = None
+        else:
+            dimcorr = [ True ]
+    elif dims == 2:
+        if better == "top-right":
+            dimcorr = None
+        elif better == "bottom-right":
+            dimcorr = [ True, False ]
+        elif better == "top-left":
+            dimcorr = [ False, True ]
+        elif better == "bottom-left":
+            dimcorr = [ True, True ]
+    
+    for norm_centroid in norm_centroids:
+        if dimcorr is None:
+            corr_norm_centroid = norm_centroid
+        else:
+            corr_norm_centroid = tuple(map(lambda dc_norm: 1.0 - dc_norm[1] if dc_norm[0] else dc_norm[1], zip(dimcorr, norm_centroid)))
+        distance = sum(corr_norm_centroid)
+        distances.append(distance)
 
     # assign ranking to distances array
     output = [0] * len(distances)
@@ -207,9 +217,10 @@ def cluster_tools(tools_dict, better):
             if val == y:
                 cluster_no[i] = num
 
-    tools_clusters = {}
-    for (x, y), num, name in zip(X, cluster_no, tools):
-        tools_clusters[name] = int(num + 1)
+    tools_clusters = {
+        name: int(num + 1)
+        for num, name in zip(cluster_no, tools)
+    }
 
     return tools_clusters
 
@@ -301,10 +312,16 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                 for agg_event in challenge["aggregation_test_actions"]:
                     agg_dataset = None
                     inline_data = None
+                    
                     challenge_X_metric_label = None
                     challenge_Y_metric_label = None
+                    
                     challenge_X_metric_entry = None
                     challenge_Y_metric_entry = None
+                    
+                    challenge_metric_labels = []
+                    challenge_metric_entries = []
+                    
                     better = None
                     ass_part_datasets = []
                     tools = {}
@@ -327,22 +344,81 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                 inline_data = json.loads(inline_data)
                             # Filtering out the ones which are not 2D-plots
                             visualization = inline_data.get("visualization", {})
-                            if visualization.get("type") != "2D-plot":
+                            vis_type = visualization.get("type")
+                            if vis_type == "2D-plot":
+                                challenge_X_metric_label = visualization["x_axis"]
+                                challenge_X_metric_entry = metrics_by_label.get(challenge_X_metric_label)
+                                if isinstance(challenge_X_metric_entry, list):
+                                    challenge_X_metric_entry = challenge_X_metric_entry[0]
+                                
+                                challenge_Y_metric_label = visualization["y_axis"]
+                                challenge_Y_metric_entry = metrics_by_label.get(challenge_Y_metric_label)
+                                if isinstance(challenge_Y_metric_entry, list):
+                                    challenge_Y_metric_entry = challenge_Y_metric_entry[0]
+                                
+                                challenge_metric_labels.append(challenge_X_metric_label)
+                                challenge_metric_labels.append(challenge_Y_metric_label)
+                                
+                                challenge_metric_entries.append(challenge_X_metric_entry)
+                                challenge_metric_entries.append(challenge_Y_metric_entry)
+                                
+                                better = visualization.get("optimization", "top-right")
+                                
+                                # Now, the values
+                                for cha_par in inline_data["challenge_participants"]:
+                                    tools[cha_par["tool_id"]] = [ cha_par["metric_x"], cha_par["metric_y"] ]
+                            elif vis_type == "bar-plot":
+                                challenge_metric_label = visualization["metric"]
+                                challenge_metric_entry = metrics_by_label.get(challenge_metric_label)
+                                if isinstance(challenge_metric_entry, list):
+                                    challenge_metric_entry = challenge_metric_entry[0]
+                                
+                                challenge_metric_labels.append(challenge_metric_label)
+                                challenge_metric_entries.append(challenge_metric_entry)
+                                
+                                # TODO: implement this???
+                                better = None
+                                
+                                # Now, the values
+                                for cha_par in inline_data["challenge_participants"]:
+                                    tools[cha_par["tool_id"]] = [ cha_par["metric_value"] ]
+                            elif vis_type == "box-plot":
+                                # It could be more than one
+                                metric_label_pos = dict()
+                                for i_label, challenge_metric_label in enumerate(visualization["available_metrics"]):
+                                    challenge_metric_entry = metrics_by_label.get(challenge_metric_label)
+                                    if isinstance(challenge_metric_entry, list):
+                                        challenge_metric_entry = challenge_metric_entry[0]
+                                    
+                                    challenge_metric_labels.append(challenge_metric_label)
+                                    challenge_metric_entries.append(challenge_metric_entry)
+                                    metric_label_pos[challenge_metric_label] = i_label
+                                
+                                # TODO: implement this???
+                                better = None
+                                
+                                # Now, the values
+                                for cha_par in inline_data["challenge_participants"]:
+                                    participant_label = cha_par["label"]
+                                    means = tools.get(participant_label)
+                                    if means is None:
+                                        means = len(challenge_metric_labels) * [0.0]
+                                        tools[participant_label] = means
+                                    
+                                    metrics_label = cha_par["metric_id"]
+                                    means[metric_label_pos[metrics_label]] = statistics.mean(
+                                        map(
+                                            lambda v:
+                                            v if not isinstance(v, dict) else v["v"]
+                                            ,
+                                            cha_par["values"]
+                                        )
+                                    )
+                            else:
                                 agg_dataset = None
                                 break
-                            challenge_X_metric_label = visualization["x_axis"]
-                            challenge_X_metric_entry = metrics_by_label.get(challenge_X_metric_label)
-                            if isinstance(challenge_X_metric_entry, list):
-                                challenge_X_metric_entry = challenge_X_metric_entry[0]
-                            challenge_Y_metric_label = visualization["y_axis"]
-                            challenge_Y_metric_entry = metrics_by_label.get(challenge_Y_metric_label)
-                            if isinstance(challenge_Y_metric_entry, list):
-                                challenge_Y_metric_entry = challenge_Y_metric_entry[0]
-                            better = visualization.get("optimization", "top-right")
-                            agg_label += "<br/>" + challenge_X_metric_label + "<br/>vs<br/>" + challenge_Y_metric_label
-                            # Now, the values
-                            for cha_par in inline_data["challenge_participants"]:
-                                tools[cha_par["tool_id"]] = [ cha_par["metric_x"], cha_par["metric_y"] ]
+                            
+                            agg_label += "<br/>" + "<br/>vs<br/>".join(challenge_metric_labels)
                         elif i_dataset["role"] == "incoming":
                             # Getting the participant dataset from the assessment dataset
                             ass_dataset = assessment_datasets.get(i_dataset["dataset_id"])
@@ -352,11 +428,15 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                     ass_part_datasets.append((ass_dataset, part_dataset))
                     
                     if agg_dataset is not None and len(ass_part_datasets) > 0:
+                        # Default value
+                        if better is None:
+                            better = "top-right"
                         tools_quartiles = classifier(tools, better)
                         challenge_object = {
                             "_id": challenge_OEB_id,
                             "aggregation_id": agg_dataset["_id"],
                             "acronym": agg_label,
+                            'metrics': challenge_metric_entries,
                             'metrics_x': challenge_X_metric_entry,
                             'metrics_y': challenge_Y_metric_entry,
                             'metrics_category': "aggregation",
