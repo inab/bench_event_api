@@ -239,8 +239,10 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
     elif classificator_id == "clusters":
         classifier = cluster_tools
 
-    else:
+    elif classificator_id is None or (classificator_id in ("diagonals", "")):
         classifier = plot_diagonal_quartiles
+    else:
+        raise KeyError(f"'{classificator_id}' is not a valid classificator")
 
     for challenge in data:
         challenge_OEB_id = challenge['_id']
@@ -298,13 +300,21 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                             # Now, the entry
                             the_metrics = metrics[m_pair["metrics_id"]]
                             metrics_metadata = the_metrics.get("_metadata")
-                            metrics_label = None
+                            metrics_labels = []
+                            # Metrics labels, ordered by precedence
                             if metrics_metadata is not None:
                                 metrics_label = metrics_metadata.get("level_2:metric_id")
-                            if metrics_label is None:
-                                _ , metrics_label = the_metrics["orig_id"].split(":" , 1)
+                                metrics_labels.append(metrics_label)
                             
-                            metrics_by_label.setdefault(metrics_label, []).append(the_metrics)
+                            _ , metrics_label = the_metrics["orig_id"].split(":" , 1)
+                            if metrics_label is not None:
+                                metrics_labels.append(metrics_label)
+                            
+                            # Last chance
+                            metrics_labels.append(the_metrics["orig_id"])
+                            
+                            for metrics_label in metrics_labels:
+                                metrics_by_label.setdefault(metrics_label, []).append(the_metrics)
                     #    continue
                     
                 
@@ -398,6 +408,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                 better = None
                                 
                                 # Now, the values
+                                failed = False
                                 for cha_par in inline_data["challenge_participants"]:
                                     participant_label = cha_par["label"]
                                     means = tools.get(participant_label)
@@ -406,6 +417,11 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                         tools[participant_label] = means
                                     
                                     metrics_label = cha_par["metric_id"]
+                                    # Detecting ill dataset cases
+                                    if metrics_label not in metric_label_pos:
+                                        failed = True
+                                        logger.error(f"Dataset {agg_dataset['_id']} has an ill inline box-plot dataset, as metrics label {metrics_label} matches no valid metric")
+                                        break
                                     means[metric_label_pos[metrics_label]] = statistics.mean(
                                         map(
                                             lambda v:
@@ -414,6 +430,10 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                             cha_par["values"]
                                         )
                                     )
+                                # Ill box-plot dataset
+                                if failed:
+                                    agg_dataset = None
+                                break
                             else:
                                 agg_dataset = None
                                 break
