@@ -433,12 +433,12 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                 # Ill box-plot dataset
                                 if failed:
                                     agg_dataset = None
-                                break
                             else:
                                 agg_dataset = None
-                                break
                             
                             agg_label += "<br/>" + "<br/>vs<br/>".join(challenge_metric_labels)
+                            if agg_dataset is None:
+                                break
                         elif i_dataset["role"] == "incoming":
                             # Getting the participant dataset from the assessment dataset
                             ass_dataset = assessment_datasets.get(i_dataset["dataset_id"])
