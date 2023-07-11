@@ -30,11 +30,14 @@ def index_page():
 
 @bp.route('/<string:bench_id>')
 @bp.route('/<string:bench_id>/<string:classificator_id>', methods = ['POST', 'GET'])
-def compute_classification(bench_id, classificator_id="diagonals"):
+@bp.route('/<string:bench_id>/<string:classificator_id>/<string:challenge_id>')
+def compute_classification(bench_id, classificator_id="diagonals", challenge_id=None):
     if request.method == 'POST':
         challenge_list = request.get_data()
     else:
         challenge_list = []
+        if challenge_id is not None:
+            challenge_list.append(challenge_id)
     
     auth_header = request.headers.get('Authorization')
     

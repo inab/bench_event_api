@@ -38,9 +38,11 @@ def plot_square_quartiles(tools_dict, better, percentile=50):
         if better == "top-right":
             dimcomp = [ True, True ]
         elif better == "bottom-right":
-            dimcomp = [ False, True ]
-        elif better == "top-left":
+            # bottom => y-axis
             dimcomp = [ True, False ]
+        elif better == "top-left":
+            # left => x-axis
+            dimcomp = [ False, True ]
         elif better == "bottom-left":
             dimcomp = [ False, False ]
     else:
@@ -135,8 +137,10 @@ def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: 
         if better == "top-right":
             dimcorr = None
         elif better == "bottom-right":
+            # bottom => y-axis
             dimcorr = [ True, False ]
         elif better == "top-left":
+            # left => x-axis
             dimcorr = [ False, True ]
         elif better == "bottom-left":
             dimcorr = [ True, True ]
@@ -247,7 +251,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
     for challenge in data:
         challenge_OEB_id = challenge['_id']
         
-        if len(challenge_list) == 0 or str.encode(challenge_OEB_id) in challenge_list:
+        if len(challenge_list) == 0 or (challenge_OEB_id in challenge_list):
             challenge_metadata = challenge.get("_metadata")
             challenge_id = None
             if challenge_metadata is not None:
