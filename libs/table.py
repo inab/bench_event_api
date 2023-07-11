@@ -138,10 +138,10 @@ def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: 
             dimcorr = None
         elif better == "bottom-right":
             # bottom => y-axis
-            dimcorr = [ True, False ]
+            dimcorr = [ False, True ]
         elif better == "top-left":
             # left => x-axis
-            dimcorr = [ False, True ]
+            dimcorr = [ True, False ]
         elif better == "bottom-left":
             dimcorr = [ True, True ]
 
@@ -196,9 +196,9 @@ def cluster_tools(tools_dict, better):
         if better == "top-right":
             dimcorr = None
         elif better == "bottom-right":
-            dimcorr = [ True, False ]
-        elif better == "top-left":
             dimcorr = [ False, True ]
+        elif better == "top-left":
+            dimcorr = [ True, False ]
         elif better == "bottom-left":
             dimcorr = [ True, True ]
     
