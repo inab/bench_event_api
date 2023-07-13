@@ -478,6 +478,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
             
             # This is a fallback to the original code
             if len(quartiles_table) == 0:
+                logger.error(f"Fix Challenge {challenge_OEB_id}")
                 for metrics_category in metrics_categories:
                     ## Right now, we are skipping aggregation metrics
                     #if metrics_category['category'] != 'assessment':
@@ -532,7 +533,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                             for dataset in challenge['assessment_datasets']:
                                 #logger.debug(json.dumps(dataset, indent=4))
                                 #get tool which this dataset belongs to
-                                tools_ids = assessment_actions[dataset["_id"]]
+                                tools_ids = assessment_actions.get(dataset["_id"], [])
                                 for tool_ids in tools_ids:
                                     tool_id , tool_name = tool_ids
                                     if tool_name not in tools:
