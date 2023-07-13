@@ -265,6 +265,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
             # Skip it!
             if not isinstance(metrics_categories, list):
                 # FIXME: Tell something more meaningful
+                logger.error(f"FIXME {challenge_OEB_id}")
                 continue
             
             # Enumerate the different datasets
@@ -283,16 +284,23 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
             
             participant_from_assessment = dict()
             for m_event in challenge["metrics_test_actions"]:
-                part_dataset = None
-                ass_dataset = None
+                part_datasets = []
+                ass_datasets = []
                 for i_dataset in m_event["involved_datasets"]:
-                    # We are capturing the aggregation dataset
+                    # We are capturing the assessment dataset
                     if i_dataset["role"] == "outgoing":
-                        ass_dataset = assessment_datasets.get(i_dataset["dataset_id"])
+                        pos_ass_dataset = assessment_datasets.get(i_dataset["dataset_id"])
+                        if pos_ass_dataset is not None:
+                            ass_datasets.append(pos_ass_dataset)
                     elif i_dataset["role"] == "incoming":
-                        part_dataset = participant_datasets.get(i_dataset["dataset_id"])
-                if part_dataset is not None and ass_dataset is not None:
-                    participant_from_assessment[ass_dataset["_id"]] = part_dataset
+                        # We are capturing the participant dataset
+                        pos_part_dataset = participant_datasets.get(i_dataset["dataset_id"])
+                        if pos_part_dataset is not None:
+                            part_datasets.append(pos_part_dataset)
+                if len(part_datasets) > 0 and len(ass_datasets) > 0:
+                    for part_dataset in part_datasets:
+                        for ass_dataset in ass_datasets:
+                            participant_from_assessment[ass_dataset["_id"]] = part_dataset
             
             if len(challenge["aggregation_test_actions"]) > 0:
                 # First, let's dig in the assessment metrics to
