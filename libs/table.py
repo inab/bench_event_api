@@ -566,7 +566,8 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
     return quartiles_table
 
 # Get datasets from given benchmarking event
-CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event_id: String) {
+CHALLENGES_FROM_BE_GRAPHQL_FAST = '''\
+query ChallengesFromBenchmarkingEvent($bench_event_id: String) {
     getBenchmarkingEvents(benchmarkingEventFilters:{id: $bench_event_id}) {
         _id
         community_id
@@ -580,7 +581,8 @@ CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event
                 metrics_id
             }
         }
-        assessment_datasets: datasets(datasetFilters: {type: "assessment"}) {
+
+        datasets {
             _id
             datalink{
                 inline_data
@@ -591,43 +593,7 @@ CHALLENGES_FROM_BE_GRAPHQL = '''query DatasetsFromBenchmarkingEvent($bench_event
             }
             type
         }
-        participant_datasets: datasets(datasetFilters: {type: "participant"}) {
-            _id
-            datalink{
-                inline_data
-            }
-            depends_on{
-                tool_id
-                metrics_id
-            }
-            type
-        }
-        metrics_test_actions: test_actions(testActionFilters: {action_type: "MetricsEvent"}) {
-          _id
-          action_type
-          challenge_id
-          _metadata
-          orig_id
-          _schema
-          status
-          tool_id
-          involved_datasets {
-              dataset_id
-              role
-          }
-        }
-        aggregation_datasets: datasets(datasetFilters: {type: "aggregation"}) {
-            _id
-            datalink{
-                inline_data
-            }
-            depends_on{
-                tool_id
-                metrics_id
-            }
-            type
-        }
-        aggregation_test_actions: test_actions(testActionFilters: {action_type: "AggregationEvent"}) {
+        test_actions {
           _id
           action_type
           challenge_id
@@ -673,7 +639,7 @@ def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
         url = base_url + "/graphql"
         # get datasets for provided benchmarking event
         query1 = {
-            'query': CHALLENGES_FROM_BE_GRAPHQL,
+            'query': CHALLENGES_FROM_BE_GRAPHQL_FAST,
             'variables': {
                 'bench_event_id': bench_id
             }
@@ -713,6 +679,38 @@ def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
         
 
         data = response["data"]["getChallenges"]
+        for challenge_ql in data:
+            logger.debug(f"Filtering {challenge_ql['_id']} datasets and actions")
+            participant_datasets = []
+            assessment_datasets = []
+            aggregation_datasets = []
+            d_mapping = {
+                "participant": participant_datasets,
+                "assessment": assessment_datasets,
+                "aggregation": aggregation_datasets,
+            }
+            for dataset in challenge_ql["datasets"]:
+                t_datasets = d_mapping.get(dataset["type"])
+                if isinstance(t_datasets, list):
+                    t_datasets.append(dataset)
+            for d_type, t_datasets in d_mapping.items():
+                challenge_ql[d_type + "_datasets"] = t_datasets
+            del challenge_ql["datasets"]
+
+            metrics_events = []
+            aggregation_events = []
+            ta_mapping = {
+                "MetricsEvent": metrics_events,
+                "AggregationEvent": aggregation_events,
+            }
+            for test_action in challenge_ql["test_actions"]:
+                t_test_actions = ta_mapping.get(test_action["action_type"])
+                if isinstance(t_test_actions, list):
+                    t_test_actions.append(test_action)
+            challenge_ql["metrics_test_actions"] = metrics_events
+            challenge_ql["aggregation_test_actions"] = aggregation_events
+            del challenge_ql["test_actions"]
+
         # get tools for provided benchmarking event
         community_id = response["data"]["getBenchmarkingEvents"][0]["community_id"]
         logger.debug(f'Benchmarking event {bench_id} belongs to community {community_id}')
