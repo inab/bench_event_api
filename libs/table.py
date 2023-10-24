@@ -511,23 +511,50 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                             # generated the participant dataset which was
                             # assessed
                             assessment_actions = {}
-                            for event in challenge["metrics_test_actions"]:
-                                tools_ids = []
-                                assessment_ids = []
-                                for i_dataset in event["involved_datasets"]:
-                                    i_role = i_dataset["role"]
-                                    if i_role == "incoming":
-                                        incoming_dataset_id = i_dataset["dataset_id"]
-                                        tool_ids = possible_participant_datasets.get(incoming_dataset_id)
-                                        if tool_ids is not None:
-                                            tools_ids.append(tool_ids)
-                                    elif i_role == "outgoing":
-                                        outgoing_dataset_id = i_dataset["dataset_id"]
-                                        if outgoing_dataset_id in possible_assessments:
-                                            assessment_ids.append(outgoing_dataset_id)
-                                
-                                for assessment_id in assessment_ids:
-                                    assessment_actions.setdefault(assessment_id, []).extend(tools_ids)
+                            if len(challenge["metrics_test_actions"]) > 0:
+                                for event in challenge["metrics_test_actions"]:
+                                    tools_ids = []
+                                    assessment_ids = []
+                                    for i_dataset in event["involved_datasets"]:
+                                        i_role = i_dataset["role"]
+                                        if i_role == "incoming":
+                                            incoming_dataset_id = i_dataset["dataset_id"]
+                                            tool_ids = possible_participant_datasets.get(incoming_dataset_id)
+                                            if tool_ids is not None:
+                                                tools_ids.append(tool_ids)
+                                        elif i_role == "outgoing":
+                                            outgoing_dataset_id = i_dataset["dataset_id"]
+                                            if outgoing_dataset_id in possible_assessments:
+                                                assessment_ids.append(outgoing_dataset_id)
+                                    
+                                    for assessment_id in assessment_ids:
+                                        assessment_actions.setdefault(assessment_id, []).extend(tools_ids)
+                            else:
+                                for assessment_dataset in assessment_datasets.values():
+                                    participant_dataset = {}
+                                    tools_ids = []
+                                    a_depends_on = assessment_datasets.get("depends_on", {})
+                                    a_tool_id = a_depends_on.get("tool_id")
+                                    for rel_dat in a_depends_on.get("rel_dataset_ids",[]):
+                                        if rel_dat.get("role") in (None, "dependency"):
+                                            r_dataset_id = rel_dat.get("dataset_id")
+                                            if r_dataset_id is not None:
+                                                possible_participant_dataset = participant_datasets.get(r_dataset_id)
+                                                if possible_participant_dataset is not None:
+                                                    incoming_dataset_id = possible_participant_dataset["_id"]
+                                                    tool_ids = possible_participant_datasets.get(incoming_dataset_id)
+                                                    if tool_ids is not None:
+                                                        tools_ids.append(tool_ids)
+                                    
+                                    if len(tools_ids) == 0:
+                                        if a_tool_id is not None:
+                                            fake_tool_id = a_tool_id
+                                        else:
+                                            fake_tool_id = assessment_dataset["orig_id"]
+                                            if ":" in fake_tool_id:
+                                                _, fake_tool_id = fake_tool_id.split(":", 1)
+                                        tools_ids.append((fake_tool_id, fake_tool_id))
+                                    assessment_actions.setdefault(assessment_dataset["_id"], []).extend(tools_ids)
                             
                             # At last
                             for dataset in challenge['assessment_datasets']:
@@ -584,6 +611,7 @@ query ChallengesFromBenchmarkingEvent($bench_event_id: String) {
 
         datasets {
             _id
+            orig_id
             datalink{
                 inline_data
             }
