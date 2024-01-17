@@ -2,6 +2,20 @@
 
 from __future__ import division
 
+from typing import (
+    cast,
+    TYPE_CHECKING,
+)
+if TYPE_CHECKING:
+    from typing import (
+        Optional,
+        Sequence,
+    )
+    
+    from flask import (
+        Response,
+    )
+
 from flask import Blueprint, jsonify, request, abort, current_app
 import json
 import logging
@@ -23,7 +37,7 @@ DEFAULT_oeb_sci_path = '/sciapi'
 bp = Blueprint('table', __name__)
 
 @bp.route('/')
-def index_page():
+def index_page() -> "str":
     return "<b>FLASK BENCHMARKING EVENT API</b><br><br>\
             USAGE:<br><br> \
             http://webpage:5000/{bench_event_id}/{desired_classification}"
@@ -31,9 +45,10 @@ def index_page():
 @bp.route('/<string:bench_id>')
 @bp.route('/<string:bench_id>/<string:classificator_id>', methods = ['POST', 'GET'])
 @bp.route('/<string:bench_id>/<string:classificator_id>/<string:challenge_id>')
-def compute_classification(bench_id, classificator_id="diagonals", challenge_id=None):
+def compute_classification(bench_id: "str", classificator_id: "Optional[str]" = "diagonals", challenge_id: "Optional[str]" = None) -> "Response":
     if request.method == 'POST':
-        challenge_list = request.get_data()
+        challenge_list_t = request.get_json()
+        challenge_list = cast("Sequence[str]", challenge_list_t) if isinstance(challenge_list_t, list) else []
     else:
         challenge_list = []
         if challenge_id is not None:

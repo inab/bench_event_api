@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+from typing import (
+    cast,
+    TYPE_CHECKING,
+)
+if TYPE_CHECKING:
+    from typing import (
+        Mapping,
+    )
+
 import json
 import logging
 import urllib.request
@@ -23,7 +32,7 @@ def getAccessToken(oeb_credentials: "Mapping[str, str]") -> "str":
     with urllib.request.urlopen(req) as t:
         token = json.load(t)
         
-        access_token = token['access_token']
+        access_token = cast("str", token['access_token'])
         #logger.debug("Token {}".format(access_token))
         
         return access_token

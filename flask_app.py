@@ -21,7 +21,7 @@ if basis == 'mod_wsgi':
     basis = __file__
 
 import logging
-def initLogging():
+def initLogging() -> "None":
     logging.basicConfig(stream=sys.stderr,level=10)
 
 if __name__ == '__main__':

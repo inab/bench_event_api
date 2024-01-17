@@ -2,6 +2,20 @@
 
 from __future__ import division
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from numbers import (
+        Real,
+    )
+    from typing import (
+        Any,
+        Callable,
+        Mapping,
+        Optional,
+        Sequence,
+        Tuple,
+    )
+
 import logging
 from flask import abort
 from sklearn.cluster import KMeans
@@ -11,12 +25,15 @@ import pandas
 import json
 import requests
 
+DEFAULT_BETTER_1D = "maximize"
+DEFAULT_BETTER_2D = "top-right"
+
 logger = logging.getLogger(__name__)
 
 # funtion that gets quartiles for x and y values
-def plot_square_quartiles(tools_dict, better, percentile=50):
+def plot_square_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[str]", percentile: "int" = 50) -> "Mapping[str, int]":
 
-    # generate 2 lists: 
+    # generate 2 lists:
     the_values = [] 
     tools = []
     dims = None
@@ -26,15 +43,24 @@ def plot_square_quartiles(tools_dict, better, percentile=50):
         if dims is None:
             dims = len(metrics)
     
+    # Default case
+    if dims is None:
+        dims = 0
+    
     dim_percentiles = tuple(np.nanpercentile(col_vals, percentile) for col_vals in zip(*the_values))
 
     dimcomp = None
     if dims == 1:
-        if better.endswith("right"):
+        if better is None:
+            better = DEFAULT_BETTER_1D
+        if better.endswith("right") or better.endswith("maximize"):
             dimcomp = [ True ]
         else:
             dimcomp = [ False ]
     elif dims == 2:
+        if better is None:
+            better = DEFAULT_BETTER_2D
+
         if better == "top-right":
             dimcomp = [ True, True ]
         elif better == "bottom-right":
@@ -46,8 +72,11 @@ def plot_square_quartiles(tools_dict, better, percentile=50):
         elif better == "bottom-left":
             dimcomp = [ False, False ]
     else:
+        # TODO: allow customizing this in some way
         dimcomp = dims * [ True ]
     
+    assert dimcomp is not None, f"Wrong optimization hint {better}"
+
     # Create a dictionary with tools and their corresponding quartile
     # Due the changes in dimensionality, for two dimensions are
     # 4 possible square quartiles, for three dimensions are 8 cubic quartiles,
@@ -85,7 +114,7 @@ def normalize_data(args: "Sequence[Sequence[float]]") -> "Tuple[Tuple[float, ...
 
 
 # funtion that splits the analysed tools into four quartiles, according to the asigned score
-def get_quartile_points(scores_and_values):
+def get_quartile_points(scores_and_values: "Sequence[Tuple[Real, Real, str]]") -> "Mapping[str, int]":
     scores = list(map(lambda s: s[0], scores_and_values))
 
     first_quartile, second_quartile, third_quartile = (
@@ -111,7 +140,7 @@ def get_quartile_points(scores_and_values):
 
 
 # funtion that separate the points through diagonal quartiles based on the distance to the 'best corner'
-def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: "str"):
+def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[str]") -> "Mapping[str, int]":
 
     # generate 2 lists: 
     the_values = [] 
@@ -129,11 +158,15 @@ def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: 
     # compute the scores for each of the tool. based on their distance to the x and y axis
     dimcorr = None
     if dims == 1:
-        if better.endswith("right"):
+        if better is None:
+            better = DEFAULT_BETTER_1D
+        if better.endswith("right") or better.endswith("maximize"):
             dimcorr = None
         else:
             dimcorr = [ True ]
     elif dims == 2:
+        if better is None:
+            better = DEFAULT_BETTER_2D
         if better == "top-right":
             dimcorr = None
         elif better == "bottom-right":
@@ -155,7 +188,7 @@ def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: 
         scores.append(score)
 
     # region sort the list in descending order
-    scores_and_values = sorted(zip(scores, the_values, tools), reverse=True)
+    scores_and_values: "Sequence[Tuple[Real, Real, str]]" = sorted(zip(scores, the_values, tools), reverse=True)
     # split in quartiles
     tools_quartiles = get_quartile_points(scores_and_values)
 
@@ -163,7 +196,7 @@ def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: 
 
 
 # function that clusters participants using the k-means algorithm
-def cluster_tools(tools_dict, better):
+def cluster_tools(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[str]") -> "Mapping[str, int]":
     # generate 2 lists:
     the_values = [] 
     tools = []
@@ -188,7 +221,7 @@ def cluster_tools(tools_dict, better):
     distances = []
     dimcorr = None
     if dims == 1:
-        if better.endswith("right"):
+        if better.endswith("right") or better.endswith("maximize"):
             dimcorr = None
         else:
             dimcorr = [ True ]
@@ -233,10 +266,11 @@ def cluster_tools(tools_dict, better):
 ###########################################################################################################
 
 
-def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mapping[str, Any]]", challenge_list):
+def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "Mapping[str, Mapping[str, Any]]", challenge_list: "Sequence[str]") -> "Sequence[Mapping[str, Any]]":
 
     # this dictionary will store all the information required for the quartiles table
     quartiles_table = []
+    classifier: "Callable[[Mapping[str, Sequence[float]], Optional[str]], Mapping[str, int]]"
     if classificator_id == "squares":
         classifier = plot_square_quartiles
 
@@ -384,7 +418,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                 challenge_metric_entries.append(challenge_X_metric_entry)
                                 challenge_metric_entries.append(challenge_Y_metric_entry)
                                 
-                                better = visualization.get("optimization", "top-right")
+                                better = visualization.get("optimization", DEFAULT_BETTER_2D)
                                 
                                 # Now, the values
                                 for cha_par in inline_data["challenge_participants"]:
@@ -398,8 +432,8 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                 challenge_metric_labels.append(challenge_metric_label)
                                 challenge_metric_entries.append(challenge_metric_entry)
                                 
-                                # TODO: implement this???
-                                better = None
+                                # TODO: check this implemented???
+                                better = visualization.get("optimization", DEFAULT_BETTER_1D)
                                 
                                 # Now, the values
                                 for cha_par in inline_data["challenge_participants"]:
@@ -416,8 +450,8 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                     challenge_metric_entries.append(challenge_metric_entry)
                                     metric_label_pos[challenge_metric_label] = i_label
                                 
-                                # TODO: implement this???
-                                better = None
+                                # TODO: implement this and add default???
+                                better = visualization.get("optimization")
                                 
                                 # Now, the values
                                 failed = False
@@ -460,9 +494,7 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                     ass_part_datasets.append((ass_dataset, part_dataset))
                     
                     if agg_dataset is not None and len(ass_part_datasets) > 0:
-                        # Default value
-                        if better is None:
-                            better = "top-right"
+                        # Default value for better is chosen by the classifier
                         tools_quartiles = classifier(tools, better)
                         challenge_object = {
                             "_id": challenge_OEB_id,
@@ -472,7 +504,8 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                             'metrics_x': challenge_X_metric_entry,
                             'metrics_y': challenge_Y_metric_entry,
                             'metrics_category': "aggregation",
-                            "participants": tools_quartiles
+                            "participants": tools_quartiles,
+                            "optimization": better
                         }
                         quartiles_table.append(challenge_object)
             
@@ -496,6 +529,8 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
 
 
                             tools = {}
+                            # TODO: improve this fallback code, as this default
+                            # for "better" should adapt to the kind of chart
                             better = 'top-right'
                             # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
                             possible_participant_datasets = {}
@@ -584,7 +619,8 @@ def build_table(data, classificator_id, tool_names, metrics: "Mapping[str, Mappi
                                 'metrics_x': metrics[challenge_X_metric],
                                 'metrics_y': metrics[challenge_Y_metric],
                                 'metrics_category': metrics_category['category'],
-                                "participants": tools_quartiles
+                                "participants": tools_quartiles,
+                                "optimization": better
                             }
                             quartiles_table.append(challenge_object)
     
@@ -658,7 +694,7 @@ import urllib.request
 #
 #http.client.HTTPConnection.debuglevel = 1
 
-def get_data(base_url, auth_header, bench_id, classificator_id, challenge_list):
+def get_data(base_url: "str", auth_header, bench_id: "str", classificator_id: "Optional[str]", challenge_list: "Sequence[str]") -> "Sequence[Mapping[str, Any]]":
     logging.getLogger().setLevel(logging.DEBUG)
     #requests_log = logging.getLogger("requests.packages.urllib3")
     #requests_log.setLevel(logging.DEBUG)
