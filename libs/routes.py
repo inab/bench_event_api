@@ -38,9 +38,14 @@ bp = Blueprint('table', __name__)
 
 @bp.route('/')
 def index_page() -> "str":
-    return "<b>FLASK BENCHMARKING EVENT API</b><br><br>\
-            USAGE:<br><br> \
-            http://webpage:5000/{bench_event_id}/{desired_classification}"
+    parsed = urllib.parse.urlparse(request.base_url)
+    server_base = f"{parsed.scheme}://{parsed.netloc}"
+    return f"""<b>FLASK BENCHMARKING EVENT API</b><br><br>
+            USAGE:<br><br>
+            {server_base}/{{bench_event_id}}/{{desired_classification}}
+            <br><br>
+            {server_base}/{{bench_event_id}}/{{desired_classification}}/{{challenge_id}}
+"""
 
 @bp.route('/<string:bench_id>')
 @bp.route('/<string:bench_id>/<string:classificator_id>', methods = ['POST', 'GET'])
