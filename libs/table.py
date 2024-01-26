@@ -362,7 +362,12 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                             for metrics_label in metrics_labels:
                                 metrics_by_label.setdefault(metrics_label, []).append(the_metrics)
                     #    continue
-                    
+                
+                metrics_labels = list(metrics_by_label.keys())
+                for metrics_label in metrics_labels:
+                    metrics_label_lower = metrics_label.lower()
+                    if metrics_label_lower != metrics_label and metrics_label_lower not in metrics_by_label:
+                        metrics_by_label[metrics_label_lower] = metrics_by_label[metrics_label]
                 
                 # Let's chain everything together
                 for agg_event in challenge["aggregation_test_actions"]:
@@ -500,6 +505,7 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                             "_id": challenge_OEB_id,
                             "aggregation_id": agg_dataset["_id"],
                             "acronym": agg_label,
+                            "challenge_acronym": challenge_id,
                             'metrics': challenge_metric_entries,
                             'metrics_x': challenge_X_metric_entry,
                             'metrics_y': challenge_Y_metric_entry,
