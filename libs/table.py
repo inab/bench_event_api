@@ -499,6 +499,15 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                                     ass_part_datasets.append((ass_dataset, part_dataset))
                     
                     if agg_dataset is not None and len(ass_part_datasets) > 0:
+                        metrics_category_id = agg_dataset.get("depends_on", {}).get("metrics_id")
+                        if metrics_category_id is None:
+                            agg_tool_id = agg_dataset.get("depends_on", {}).get("tool_id")
+                            for m_cat in metrics_categories:
+                                if m_cat['category'] == 'aggregation':
+                                    for a_metric in m_cat["metrics"]:
+                                        if a_metric.get("tool_id") == agg_tool_id:
+                                            metrics_category_id = a_metric.get("metrics_id")
+                                            break
                         # Default value for better is chosen by the classifier
                         tools_quartiles = classifier(tools, better)
                         challenge_object = {
@@ -510,6 +519,7 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                             'metrics_x': challenge_X_metric_entry,
                             'metrics_y': challenge_Y_metric_entry,
                             'metrics_category': "aggregation",
+                            "metrics_category_id": metrics_category_id,
                             "participants": tools_quartiles,
                             "optimization": better
                         }
@@ -523,8 +533,28 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
             #     logger.error(json.dumps(challenge, indent=4))
                 
             # This is a fallback to the original code
-            if len(quartiles_table) == 0 and len(challenge['participant_datasets']) > 0:
-                logger.error(f"Fix Challenge {challenge_OEB_id}")
+            if len(quartiles_table) == 0:
+                if len(challenge['participant_datasets']) > 0:
+                    logger.error(f"Fix Challenge {challenge_OEB_id}")
+                else:
+                    if len(challenge['participant_datasets']) == 0:
+                        for metrics_category_F in metrics_categories:
+                            if metrics_category_F['category'] == "aggregation":
+                                for i_metrics_F, metrics_F in enumerate(metrics_category_F['metrics']):
+                                    challenge_object = {
+                                        "_id": challenge_OEB_id,
+                                        "acronym": challenge_id,
+                                        'metrics': [],
+                                        'metrics_category': metrics_category_F['category'],
+                                        'metrics_category_id': metrics_F["metrics_id"],
+                                        "participants": {},
+                                        "optimization": '',
+                                    }
+                                    quartiles_table.append(challenge_object)
+
+                                break
+                        continue
+                    
                 for metrics_category in metrics_categories:
                     ## Right now, we are skipping aggregation metrics
                     #if metrics_category['category'] != 'assessment':
@@ -636,6 +666,7 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                                 'metrics_x': metrics[challenge_X_metric],
                                 'metrics_y': metrics[challenge_Y_metric],
                                 'metrics_category': metrics_category['category'],
+                                "metrics_category_id": None,
                                 "participants": tools_quartiles,
                                 "optimization": better
                             }
