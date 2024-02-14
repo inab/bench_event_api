@@ -544,6 +544,7 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                                     challenge_object = {
                                         "_id": challenge_OEB_id,
                                         "acronym": challenge_id,
+                                        "challenge_acronym": challenge_id,
                                         'metrics': [],
                                         'metrics_category': metrics_category_F['category'],
                                         'metrics_category_id': metrics_F["metrics_id"],
@@ -659,6 +660,7 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                             challenge_object = {
                                 "_id": challenge_OEB_id,
                                 "acronym": challenge_id,
+                                "challenge_acronym": challenge_id,
                                 'metrics': [
                                     metrics[challenge_X_metric],
                                     metrics[challenge_Y_metric],
