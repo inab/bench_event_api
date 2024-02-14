@@ -514,9 +514,16 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                             "optimization": better
                         }
                         quartiles_table.append(challenge_object)
-            
+                    else:
+                        if agg_dataset is None:
+                            logger.error(f"Missing aggregation dataset for {agg_event['_id']}")
+                        if len(ass_part_datasets) == 0:
+                            logger.error(f"Missing assessment datasets for {agg_event['_id']}")
+            # else:
+            #     logger.error(json.dumps(challenge, indent=4))
+                
             # This is a fallback to the original code
-            if len(quartiles_table) == 0:
+            if len(quartiles_table) == 0 and len(challenge['participant_datasets']) > 0:
                 logger.error(f"Fix Challenge {challenge_OEB_id}")
                 for metrics_category in metrics_categories:
                     ## Right now, we are skipping aggregation metrics
@@ -622,6 +629,10 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                             challenge_object = {
                                 "_id": challenge_OEB_id,
                                 "acronym": challenge_id,
+                                'metrics': [
+                                    metrics[challenge_X_metric],
+                                    metrics[challenge_Y_metric],
+                                ],
                                 'metrics_x': metrics[challenge_X_metric],
                                 'metrics_y': metrics[challenge_Y_metric],
                                 'metrics_category': metrics_category['category'],
