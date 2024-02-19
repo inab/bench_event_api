@@ -22,10 +22,7 @@ if basis == 'mod_wsgi':
 
 import logging
 def initLogging() -> "None":
-    logging.basicConfig(stream=sys.stderr,level=10)
-
-if __name__ == '__main__':
-    initLogging()
+    logging.basicConfig(stream=sys.stderr,level=logging.DEBUG)
 
 api_root = os.path.split(basis)[0]
 
@@ -48,4 +45,5 @@ CORS(app)
 app.register_blueprint(bp)
 
 if __name__ == '__main__':
+    initLogging()
     app.run(debug=True)
