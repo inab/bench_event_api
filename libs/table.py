@@ -266,7 +266,7 @@ def cluster_tools(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[
 ###########################################################################################################
 
 
-def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "Mapping[str, Mapping[str, Any]]", challenge_list: "Sequence[str]") -> "Sequence[Mapping[str, Any]]":
+def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Optional[str]", tool_names, metrics: "Mapping[str, Mapping[str, Any]]", challenge_list: "Sequence[str]") -> "Sequence[Mapping[str, Any]]":
 
     # this dictionary will store all the information required for the quartiles table
     quartiles_table = []
@@ -282,8 +282,9 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
     else:
         raise KeyError(f"'{classificator_id}' is not a valid classificator")
 
-    for challenge in data:
+    for challenge in challenges:
         challenge_OEB_id = challenge['_id']
+        empty_quartiles = True
         
         if len(challenge_list) == 0 or (challenge_OEB_id in challenge_list):
             challenge_metadata = challenge.get("_metadata")
@@ -524,16 +525,17 @@ def build_table(data, classificator_id: "Optional[str]", tool_names, metrics: "M
                             "optimization": better
                         }
                         quartiles_table.append(challenge_object)
+                        empty_quartiles = False
                     else:
                         if agg_dataset is None:
                             logger.error(f"Missing aggregation dataset for {agg_event['_id']}")
                         if len(ass_part_datasets) == 0:
                             logger.error(f"Missing assessment datasets for {agg_event['_id']}")
-            # else:
+            #else:
             #     logger.error(json.dumps(challenge, indent=4))
                 
             # This is a fallback to the original code
-            if len(quartiles_table) == 0:
+            if empty_quartiles:
                 if len(challenge['participant_datasets']) > 0:
                     logger.error(f"Fix Challenge {challenge_OEB_id}")
                 else:
@@ -792,8 +794,8 @@ def get_data(base_url: "str", auth_header, bench_id: "str", classificator_id: "O
             return None
         
 
-        data = response["data"]["getChallenges"]
-        for challenge_ql in data:
+        challenges_ql = response["data"]["getChallenges"]
+        for challenge_ql in challenges_ql:
             logger.debug(f"Filtering {challenge_ql['_id']} datasets and actions")
             participant_datasets = []
             assessment_datasets = []
@@ -867,7 +869,7 @@ def get_data(base_url: "str", auth_header, bench_id: "str", classificator_id: "O
         
         # compute the classification
         #logger.info("data")
-        #logger.info(data)
+        #logger.info(challenges_ql)
         #logger.info("classificator_id")
         #logger.info(classificator_id)
         #logger.info("tool_names")
@@ -876,7 +878,7 @@ def get_data(base_url: "str", auth_header, bench_id: "str", classificator_id: "O
         #logger.info(metrics)
         #logger.info("challenge_list")
         #logger.info(challenge_list)
-        result = build_table(data, classificator_id, tool_names, metrics, challenge_list)
+        result = build_table(challenges_ql, classificator_id, tool_names, metrics, challenge_list)
 
         return result
 
