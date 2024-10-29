@@ -207,7 +207,8 @@ def cluster_tools(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[
         if dims is None:
             dims = len(metrics)
     
-    kmeans = KMeans(n_clusters=4, n_init=50, random_state=0).fit(the_values)
+    n_clusters = 4 if len(the_values) >= 4 else len(the_values)
+    kmeans = KMeans(n_clusters=n_clusters, n_init=50, random_state=0).fit(the_values)
 
     cluster_no = kmeans.labels_
 
