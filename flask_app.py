@@ -28,7 +28,7 @@ api_root = os.path.split(basis)[0]
 
 app = Flask(__name__)
 
-config_file = basis + '.json'
+config_file = sys.argv[1] if len(sys.argv)>1 else basis + '.json'
 if os.path.exists(config_file):
     with open(config_file, mode="r", encoding="utf-8") as cF:
         app.config.update(json.load(cF))
