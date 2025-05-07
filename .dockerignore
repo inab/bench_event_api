@@ -1,0 +1,11 @@
+# Ignore everything but ...
+*
+
+# ...these files
+!/libs
+!/flask_app.py
+!/flask_app.wsgi
+!/__init__.py
+!/LICENSE
+!/requirements.txt
+!/uwsgi.ini
