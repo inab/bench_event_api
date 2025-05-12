@@ -14,3 +14,20 @@ python flask_app.py
 -   If you pass any Authorization header to the service, it will be forwarded to internal GraphQL queries, as some additional data could be returned.
 -   In order to get data from a specific benchmarking event go to: http://localhost:5000/'<bench_event_id>'/'<desired_classification>' (e.g. http://localhost:5000/OEBE0020000001/squares)
 -   This directory holds a WSGI executable, so it can be integrated into an Apache instance. Please follow the instructions of API integration into Apache in [INSTALL.md](INSTALL.md).
+
+## Deployment in production
+
+There is a `flask_app.py.json.*` for each one of the deployments: production, preprod, test1 and test2.
+
+Each one of these deployments needs its own auth file. For instance, a `flask_app.py.json.prod.auth` file is paired with setup at [flask_app.py.json.prod](flask_app.py.json.prod).
+
+The format of the auth files is the next, where the `REALM`, `THEUSER` and `THEPASS` have to be substituted by the legit values:
+
+```json
+{
+        "authURI": "https://inb.bsc.es/auth/realms/REALM/protocol/openid-connect/token",
+        "clientId": "oeb-api-rest",
+        "user": "THEUSER",
+        "pass": "THEPASS"
+}
+```
