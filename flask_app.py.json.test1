@@ -1,6 +1,6 @@
 {
 	"oeb_scientific": {
-		"default_server": "dev-openebench.bsc.es",
+		"default_server": "test1.openebench.bsc.es",
 		"$comment": "The path was /sciapi and will be /api/scientific once migration to new GraphQL code is finished",
 		"path": "/api/scientific"
 	}

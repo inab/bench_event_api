@@ -10,40 +10,49 @@ from flask_cors import CORS
 
 from libs.routes import bp
 
-# Creating the object holding the state of the API
-if hasattr(sys, 'frozen'):
-        basis = sys.executable
-else:
-        basis = sys.argv[0]
-
-# It is being called by mod_wsgi
-if basis == 'mod_wsgi':
-    basis = __file__
-
 import logging
 def initLogging() -> "None":
     logging.basicConfig(stream=sys.stderr,level=logging.DEBUG)
 
-api_root = os.path.split(basis)[0]
+def initApp():
+    # Creating the object holding the state of the API
+    if hasattr(sys, 'frozen'):
+            basis = sys.executable
+    else:
+            basis = sys.argv[0]
 
-app = Flask(__name__)
+    # It is being called by either mod_wsgi or uwsgi
+    if basis in ('mod_wsgi', 'uwsgi'):
+        basis = __file__
 
-config_file = sys.argv[1] if len(sys.argv)>1 else basis + '.json'
-if os.path.exists(config_file):
-    with open(config_file, mode="r", encoding="utf-8") as cF:
-        app.config.update(json.load(cF))
+    api_root = os.path.split(basis)[0]
 
-auth_config_file = config_file + '.auth'
-if os.path.exists(auth_config_file):
-    with open(auth_config_file, mode="r", encoding="utf-8") as cF:
-        app.config.update({"oeb_auth": json.load(cF)})
-else:
-    logging.critical(f"The file with the auth setup {auth_config_file} must exist, in order to be granted access to TestActions")
+    app = Flask(__name__)
 
-CORS(app)
+    config_file = sys.argv[1] if len(sys.argv)>1 else basis + '.json'
+    if os.path.exists(config_file):
+        with open(config_file, mode="r", encoding="utf-8") as cF:
+            app.config.update(json.load(cF))
+    else:
+        logging.warning(f"Configuration file {config_file} was not found (or it is not readable)")
 
-app.register_blueprint(bp)
+    auth_config_file = config_file + '.auth'
+    if os.path.exists(auth_config_file):
+        with open(auth_config_file, mode="r", encoding="utf-8") as cF:
+            app.config.update({"oeb_auth": json.load(cF)})
+    else:
+        logging.critical(f"The file with the auth setup {auth_config_file} must exist, in order to be granted access to TestActions")
+
+    CORS(app)
+
+    app.register_blueprint(bp)
+    
+    return app
+
 
 if __name__ == '__main__':
     initLogging()
+    app = initApp()
     app.run(debug=True)
+else:
+    app = initApp()
