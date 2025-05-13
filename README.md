@@ -31,3 +31,22 @@ The format of the auth files is the next, where the `REALM`, `THEUSER` and `THEP
         "pass": "THEPASS"
 }
 ```
+
+There is a sample file at [flask_app.py.json.auth.template](flask_app.py.json.auth.template).
+
+### nginx reverse proxy setup
+
+Remember to adjust the IP and the port, depending on whether it is being pointed out production (5000), preprod (5001), test1 (5002) or test2 (5003).
+
+```
+    location /rest/bench_event_api {
+	rewrite /rest/bench_event_api/(.*) /$1 break;
+        uwsgi_pass THE_API_IP:5000;
+        include uwsgi_params;
+    }
+
+```
+
+### Apache reverse proxy setup
+
+**TO BE DONE**
