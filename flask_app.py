@@ -14,7 +14,7 @@ import logging
 def initLogging() -> "None":
     logging.basicConfig(stream=sys.stderr,level=logging.DEBUG)
 
-def initApp():
+def initApp() -> "Flask":
     # Creating the object holding the state of the API
     if hasattr(sys, 'frozen'):
             basis = sys.executable
