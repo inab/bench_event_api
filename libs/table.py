@@ -11,9 +11,12 @@ if TYPE_CHECKING:
         Any,
         Callable,
         Mapping,
+        MutableMapping,
+        MutableSequence,
         Optional,
         Sequence,
         Tuple,
+        Union,
     )
 
 import logging
@@ -222,11 +225,11 @@ def cluster_tools(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[
     distances = []
     dimcorr = None
     if dims == 1:
-        if better.endswith("right") or better.endswith("maximize"):
+        if better is not None and (better.endswith("right") or better.endswith("maximize")):
             dimcorr = None
         else:
             dimcorr = [ True ]
-    elif dims == 2:
+    elif dims == 2 and better is not None:
         if better == "top-right":
             dimcorr = None
         elif better == "bottom-right":
@@ -341,18 +344,21 @@ def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Op
             if len(challenge["aggregation_test_actions"]) > 0:
                 # First, let's dig in the assessment metrics to
                 # build a map from metrics label to metrics entry
-                metrics_by_label = dict()
+                metrics_by_label: "MutableMapping[str, MutableSequence[Mapping[str, Any]]]" = dict()
                 for m_cat in metrics_categories:
                     if m_cat['category'] == 'assessment':
                         for m_pair in m_cat["metrics"]:
                             # Now, the entry
                             the_metrics = metrics[m_pair["metrics_id"]]
                             metrics_metadata = the_metrics.get("_metadata")
-                            metrics_labels = []
+                            metrics_labels: "MutableSequence[str]" = []
                             # Metrics labels, ordered by precedence
                             if metrics_metadata is not None:
-                                metrics_label = metrics_metadata.get("level_2:metric_id")
-                                metrics_labels.append(metrics_label)
+                                metrics_label_m: "Optional[Union[str, Sequence[str]]]" = metrics_metadata.get("level_2:metric_id")
+                                if isinstance(metrics_label_m, list):
+                                    metrics_labels.extend(metrics_label_m)
+                                elif isinstance(metrics_label_m, str):
+                                    metrics_labels.append(metrics_label_m)
                             
                             _ , metrics_label = the_metrics["orig_id"].split(":" , 1)
                             if metrics_label is not None:
