@@ -16,6 +16,7 @@ services:
 
   production:
     image: ghcr.io/inab/bench_event_api:${BENCH_EVENT_API_TAG:-latest}
+    restart: always
     build:
       context: .
     ports:
@@ -29,6 +30,7 @@ services:
   # This one is only used for development and local testing purposes
   nginx_production:
     image: docker.io/library/nginx:1.27
+    restart: always
     profiles:
       - nginx
     depends_on:
@@ -40,6 +42,7 @@ services:
 
   preprod:
     image: ghcr.io/inab/bench_event_api:${BENCH_EVENT_API_TAG:-latest}
+    restart: always
     build:
       context: .
     ports:
@@ -50,27 +53,29 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
-  test1:
+  test-oeb1:
     image: ghcr.io/inab/bench_event_api:${BENCH_EVENT_API_TAG:-latest}
+    restart: always
     build:
       context: .
     ports:
       - '${TEST1_PORT:-5002}:5000'
     volumes:
-      - ./flask_app.py.json.test1:/usr/src/app/flask_app.py.json:ro
-      - ./flask_app.py.json.test1.auth:/usr/src/app/flask_app.py.json.auth:ro
+      - ./flask_app.py.json.test-oeb1:/usr/src/app/flask_app.py.json:ro
+      - ./flask_app.py.json.test-oeb1.auth:/usr/src/app/flask_app.py.json.auth:ro
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
-  test2:
+  test-oeb2:
     image: ghcr.io/inab/bench_event_api:${BENCH_EVENT_API_TAG:-latest}
+    restart: always
     build:
       context: .
     ports:
       - '${TEST2_PORT:-5003}:5000'
     volumes:
-      - ./flask_app.py.json.test2:/usr/src/app/flask_app.py.json:ro
-      - ./flask_app.py.json.test2.auth:/usr/src/app/flask_app.py.json.auth:ro
+      - ./flask_app.py.json.test-oeb2:/usr/src/app/flask_app.py.json:ro
+      - ./flask_app.py.json.test-oeb2.auth:/usr/src/app/flask_app.py.json.auth:ro
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
