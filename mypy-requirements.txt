@@ -1,3 +1,4 @@
 pandas-stubs
 types-Flask-Cors
 types-requests
+git+https://github.com/microsoft/python-type-stubs.git

@@ -2,7 +2,10 @@
 
 from __future__ import division
 
-from typing import TYPE_CHECKING
+from typing import (
+    cast,
+    TYPE_CHECKING,
+)
 if TYPE_CHECKING:
     from numbers import (
         Real,
@@ -10,6 +13,7 @@ if TYPE_CHECKING:
     from typing import (
         Any,
         Callable,
+        List,
         Mapping,
         MutableMapping,
         MutableSequence,
@@ -117,11 +121,12 @@ def normalize_data(args: "Sequence[Sequence[float]]") -> "Tuple[Tuple[float, ...
 
 
 # funtion that splits the analysed tools into four quartiles, according to the asigned score
-def get_quartile_points(scores_and_values: "Sequence[Tuple[Real, Real, str]]") -> "Mapping[str, int]":
-    scores = list(map(lambda s: s[0], scores_and_values))
+def get_quartile_points(scores_and_values: "Sequence[Tuple[Real, Sequence[float], str]]") -> "Mapping[str, int]":
+    scores: "Sequence[float]" = list(map(lambda s: cast("float", s[0]), scores_and_values))
 
-    first_quartile, second_quartile, third_quartile = (
-        np.nanpercentile(scores, 25), np.nanpercentile(scores, 50), np.nanpercentile(scores, 75))
+    first_quartile = np.nanpercentile(scores, 25)
+    second_quartile = np.nanpercentile(scores, 50)
+    third_quartile = np.nanpercentile(scores, 75)
 
     tools_quartiles = {}
     for i, scores_and_value in enumerate(scores_and_values):
@@ -146,7 +151,7 @@ def get_quartile_points(scores_and_values: "Sequence[Tuple[Real, Real, str]]") -
 def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[str]") -> "Mapping[str, int]":
 
     # generate 2 lists: 
-    the_values = [] 
+    the_values: "MutableSequence[Sequence[float]]" = [] 
     tools = []
     dims = None
     for key, metrics in tools_dict.items():
@@ -181,17 +186,17 @@ def plot_diagonal_quartiles(tools_dict: "Mapping[str,Sequence[float]]", better: 
         elif better == "bottom-left":
             dimcorr = [ True, True ]
 
-    scores = []
+    scores: "MutableSequence[Real]" = []
     for norm_value in norm_values:
         if dimcorr is None:
             corr_norm_value = norm_value
         else:
             corr_norm_value = tuple(map(lambda dc_norm: 1.0 - dc_norm[1] if dc_norm[0] else dc_norm[1], zip(dimcorr, norm_value)))
-        score = sum(corr_norm_value)
+        score = cast("Real", sum(corr_norm_value))
         scores.append(score)
 
     # region sort the list in descending order
-    scores_and_values: "Sequence[Tuple[Real, Real, str]]" = sorted(zip(scores, the_values, tools), reverse=True)
+    scores_and_values: "Sequence[Tuple[Real, Sequence[float], str]]" = sorted(zip(scores, the_values, tools), reverse=True)
     # split in quartiles
     tools_quartiles = get_quartile_points(scores_and_values)
 
@@ -213,9 +218,9 @@ def cluster_tools(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[
     n_clusters = 4 if len(the_values) >= 4 else len(the_values)
     kmeans = KMeans(n_clusters=n_clusters, n_init=50, random_state=0).fit(the_values)
 
-    cluster_no = kmeans.labels_
+    cluster_no: "MutableSequence[int]" = kmeans.labels_    # type: ignore[attr-defined]
 
-    centroids = kmeans.cluster_centers_.tolist()
+    centroids: "Sequence[Sequence[float]]" = kmeans.cluster_centers_.tolist()   # type: ignore[attr-defined]
 
     # normalize data to 0-1 range
     
@@ -270,10 +275,11 @@ def cluster_tools(tools_dict: "Mapping[str,Sequence[float]]", better: "Optional[
 ###########################################################################################################
 
 
-def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Optional[str]", tool_names, metrics: "Mapping[str, Mapping[str, Any]]", challenge_list: "Sequence[str]") -> "Sequence[Mapping[str, Any]]":
+def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Optional[str]", tool_names: "Mapping[str, str]", metrics: "Mapping[str, Mapping[str, Any]]", challenge_list: "Sequence[str]") -> "Sequence[Mapping[str, Any]]":
 
     # this dictionary will store all the information required for the quartiles table
-    quartiles_table = []
+    # This type is needed to support in place .sort method
+    quartiles_table: "List[Mapping[str, Any]]" = []
     classifier: "Callable[[Mapping[str, Sequence[float]], Optional[str]], Mapping[str, int]]"
     if classificator_id == "squares":
         classifier = plot_square_quartiles
@@ -287,12 +293,12 @@ def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Op
         raise KeyError(f"'{classificator_id}' is not a valid classificator")
 
     for challenge in challenges:
-        challenge_OEB_id = challenge['_id']
+        challenge_OEB_id: "str" = challenge['_id']
         empty_quartiles = True
         
         if len(challenge_list) == 0 or (challenge_OEB_id in challenge_list):
             challenge_metadata = challenge.get("_metadata")
-            challenge_id = None
+            challenge_id: "Optional[str]" = None
             if challenge_metadata is not None:
                 challenge_metadata = json.loads(challenge_metadata)
                 challenge_id = challenge_metadata.get("level_2:challenge_id")
@@ -581,27 +587,27 @@ def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Op
                             challenge_Y_metric = metrics_Y['metrics_id']
 
 
-                            tools = {}
+                            tools_c: "MutableMapping[str, MutableSequence[float]]" = {}
                             # TODO: improve this fallback code, as this default
                             # for "better" should adapt to the kind of chart
                             better = 'top-right'
                             # loop over all assessment datasets and create a dictionary like -> { 'tool': [x_metric, y_metric], ..., ... }
-                            possible_participant_datasets = {}
+                            possible_participant_datasets: "MutableMapping[str, Tuple[str, str]]" = {}
                             for dataset in challenge['participant_datasets']:
                                 #logger.debug(json.dumps(dataset, indent=4))
                                 #get tool which this dataset belongs to
-                                tool_id = dataset['depends_on']['tool_id']
+                                tool_id: "str" = dataset['depends_on']['tool_id']
                                 tool_name = tool_names[tool_id]
                                 possible_participant_datasets[dataset["_id"]] = (tool_id, tool_name)
                                 
-                            possible_assessments = set(map(lambda ad: ad["_id"], challenge['assessment_datasets']))
+                            possible_assessments = set(map(lambda ad: cast("str", ad["_id"]), challenge['assessment_datasets']))
                             # It maps assessment datasets to the tool(s) which
                             # generated the participant dataset which was
                             # assessed
-                            assessment_actions = {}
+                            assessment_actions: "MutableMapping[str, MutableSequence[Tuple[str, str]]]" = {}
                             if len(challenge["metrics_test_actions"]) > 0:
                                 for event in challenge["metrics_test_actions"]:
-                                    tools_ids = []
+                                    tools_ids: "MutableSequence[Tuple[str, str]]" = []
                                     assessment_ids = []
                                     for i_dataset in event["involved_datasets"]:
                                         i_role = i_dataset["role"]
@@ -619,7 +625,7 @@ def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Op
                                         assessment_actions.setdefault(assessment_id, []).extend(tools_ids)
                             else:
                                 for assessment_dataset in assessment_datasets.values():
-                                    participant_dataset = {}
+                                    participant_dataset: "MutableMapping[str, Any]" = {}
                                     tools_ids = []
                                     a_depends_on = assessment_datasets.get("depends_on", {})
                                     a_tool_id = a_depends_on.get("tool_id")
@@ -648,23 +654,23 @@ def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Op
                             for dataset in challenge['assessment_datasets']:
                                 #logger.debug(json.dumps(dataset, indent=4))
                                 #get tool which this dataset belongs to
-                                tools_ids = assessment_actions.get(dataset["_id"], [])
-                                for tool_ids in tools_ids:
+                                tools_ids_l: "Sequence[Tuple[str, str]]" = assessment_actions.get(dataset["_id"], [])
+                                for tool_ids in tools_ids_l:
                                     tool_id , tool_name = tool_ids
-                                    if tool_name not in tools:
-                                        tools[tool_name] = [0]*2
+                                    if tool_name not in tools_c:
+                                        tools_c[tool_name] = [0]*2
                                     # get value of the two metrics
                                     inline_data = dataset['datalink']['inline_data']
                                     if isinstance(inline_data, str):
                                         inline_data = json.loads(inline_data)
                                     metric = float(inline_data['value'])
                                     if dataset['depends_on']['metrics_id'] == challenge_X_metric:
-                                        tools[tool_name][0] = metric
+                                        tools_c[tool_name][0] = metric
                                     elif dataset['depends_on']['metrics_id'] == challenge_Y_metric:
-                                        tools[tool_name][1] = metric
+                                        tools_c[tool_name][1] = metric
 
                             # get quartiles depending on selected classification method
-                            tools_quartiles = classifier(tools, better)
+                            tools_quartiles = classifier(tools_c, better)
                             
                             challenge_object = {
                                 "_id": challenge_OEB_id,
@@ -684,7 +690,7 @@ def build_table(challenges: "Sequence[Mapping[str, Any]]", classificator_id: "Op
                             quartiles_table.append(challenge_object)
     
     # Sort by acronym
-    quartiles_table.sort(key=lambda co: co["acronym"])
+    quartiles_table.sort(key=lambda co: cast("str", co["acronym"]))
     return quartiles_table
 
 # Get datasets from given benchmarking event
@@ -753,7 +759,7 @@ import urllib.request
 #
 #http.client.HTTPConnection.debuglevel = 1
 
-def get_data(base_url: "str", auth_header, bench_id: "str", classificator_id: "Optional[str]", challenge_list: "Sequence[str]") -> "Sequence[Mapping[str, Any]]":
+def get_data(base_url: "str", auth_header: "Optional[str]", bench_id: "str", classificator_id: "Optional[str]", challenge_list: "Sequence[str]") -> "Optional[Sequence[Mapping[str, Any]]]":
     logging.getLogger().setLevel(logging.DEBUG)
     #requests_log = logging.getLogger("requests.packages.urllib3")
     #requests_log.setLevel(logging.DEBUG)
@@ -804,9 +810,9 @@ def get_data(base_url: "str", auth_header, bench_id: "str", classificator_id: "O
         challenges_ql = response["data"]["getChallenges"]
         for challenge_ql in challenges_ql:
             logger.debug(f"Filtering {challenge_ql['_id']} datasets and actions")
-            participant_datasets = []
-            assessment_datasets = []
-            aggregation_datasets = []
+            participant_datasets: "MutableSequence[Mapping[str, Any]]" = []
+            assessment_datasets: "MutableSequence[Mapping[str, Any]]" = []
+            aggregation_datasets: "MutableSequence[Mapping[str, Any]]" = []
             d_mapping = {
                 "participant": participant_datasets,
                 "assessment": assessment_datasets,
@@ -820,8 +826,8 @@ def get_data(base_url: "str", auth_header, bench_id: "str", classificator_id: "O
                 challenge_ql[d_type + "_datasets"] = t_datasets
             del challenge_ql["datasets"]
 
-            metrics_events = []
-            aggregation_events = []
+            metrics_events: "MutableSequence[Mapping[str, Any]]" = []
+            aggregation_events: "MutableSequence[Mapping[str, Any]]" = []
             ta_mapping = {
                 "MetricsEvent": metrics_events,
                 "AggregationEvent": aggregation_events,
