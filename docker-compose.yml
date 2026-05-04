@@ -59,7 +59,7 @@ services:
     build:
       context: .
     ports:
-      - '${TEST1_PORT:-5002}:5000'
+      - '${TEST_OEB1_PORT:-5002}:5000'
     volumes:
       - ./flask_app.py.json.test-oeb1:/usr/src/app/flask_app.py.json:ro
       - ./flask_app.py.json.test-oeb1.auth:/usr/src/app/flask_app.py.json.auth:ro
@@ -72,10 +72,23 @@ services:
     build:
       context: .
     ports:
-      - '${TEST2_PORT:-5003}:5000'
+      - '${TEST_OEB2_PORT:-5003}:5000'
     volumes:
       - ./flask_app.py.json.test-oeb2:/usr/src/app/flask_app.py.json:ro
       - ./flask_app.py.json.test-oeb2.auth:/usr/src/app/flask_app.py.json.auth:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  preprod-oeb2:
+    image: ghcr.io/inab/bench_event_api:${BENCH_EVENT_API_TAG:-latest}
+    restart: always
+    build:
+      context: .
+    ports:
+      - '${PREPROD_OEB2_PORT:-5004}:5000'
+    volumes:
+      - ./flask_app.py.json.preprod-oeb2:/usr/src/app/flask_app.py.json:ro
+      - ./flask_app.py.json.preprod-oeb2.auth:/usr/src/app/flask_app.py.json.auth:ro
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
